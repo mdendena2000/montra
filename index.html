@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Fintrack</title>
+<title>Montra</title>
+<link rel="icon" type="image/png" href="logo.png"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -252,7 +253,7 @@ canvas{display:block}
 <!-- ══════════ WELCOME SCREEN ══════════ -->
 <div id="welcome-screen">
   <div class="welcome-card">
-    <div class="welcome-logo"><span class="welcome-logo-dot"></span>Fintrack</div>
+    <div class="welcome-logo"></span>Montra</div>
     <div class="welcome-sub">Seu gerenciador de finanças pessoais</div>
 
     <button class="welcome-btn welcome-btn-primary" id="btn-continue" onclick="continueFromLS()" style="display:none">
@@ -284,7 +285,7 @@ canvas{display:block}
 <div class="app">
   <div class="header">
     <div class="header-left">
-      <div class="logo"><span class="logo-dot"></span>Fintrack</div>
+      <div class="logo"></span>Montra</div>
       <span class="session-name" id="session-name-label">novo arquivo</span>
     </div>
     <div class="tabs">
@@ -445,11 +446,11 @@ const RESP_PALETTE=['#7c6ff7','#3ecf8e','#f87171','#fbbf24','#60a5fa','#c084fc',
 
 let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
-let currentFileName='fintrack.json';
+let currentFileName='montra.json';
 let transactions=[], recurring=[], responsibles=[], paidMonths=[];
 let charts={};
 
-const LS_KEY='fintrack_data';
+const LS_KEY='montra_data';
 function saveToLS(){
   try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths}));}catch(e){}
 }
@@ -461,7 +462,7 @@ function buildFileName(){
   const yyyy=d.getFullYear();
   const hh=String(d.getHours()).padStart(2,'0');
   const min=String(d.getMinutes()).padStart(2,'0');
-  return `FITRACK${dd}${mm}${yyyy}T${hh}${min}.json`;
+  return `DB${dd}${mm}${yyyy}T${hh}${min}.json`;
 }
 function markUnsaved(){saveToLS();}
 function markSaved(){}
@@ -494,7 +495,7 @@ function createNew(){
   transactions=[]; recurring=[]; responsibles=[]; paidMonths=[];
   // Default responsibles
   responsibles=[];
-  currentFileName='fintrack.json';
+  currentFileName='montra.json';
   startApp('novo arquivo');
 }
 
@@ -989,7 +990,7 @@ function printExtrato(){
   </style></head><body>
   <div class="header">
     <div>
-      <div class="logo"><div class="logo-dot"></div>Fintrack</div>
+      <div class="logo"></div>Montra</div>
       <div style="margin-top:4px;font-size:12px;color:#888">Extrato mensal de transações</div>
     </div>
     <div class="header-info">
@@ -1010,7 +1011,7 @@ function printExtrato(){
     <tbody>${rows}</tbody>
   </table>`:'<div class="empty">Nenhuma transação neste mês.</div>'}
   <div class="footer">
-    <span>Fintrack — gerenciador de finanças pessoais</span>
+    <span>Montra — gerenciador de finanças pessoais</span>
     <span>${txs.length} transação${txs.length!==1?'ões':''} · ${monthLabel}</span>
   </div>
   <script>window.onload=()=>{window.print();}<\/script>

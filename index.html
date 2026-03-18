@@ -99,6 +99,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tx-info{flex:1;min-width:0}
 .tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
 .recur-badge{font-size:10px;background:var(--accentbg);color:var(--accent);border-radius:4px;padding:1px 5px;font-weight:500;flex-shrink:0}
+.install-badge{font-size:10px;background:var(--amberbg);color:var(--amber);border-radius:4px;padding:1px 5px;font-weight:600;flex-shrink:0;letter-spacing:.2px}
 .tx-meta{font-size:12px;color:var(--text3);margin-top:1px;display:flex;align-items:center;gap:6px}
 .resp-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:20px}
 .tx-date{font-size:12px;color:var(--text3);white-space:nowrap}
@@ -118,10 +119,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
 .recur-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px}
 .recur-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.recur-card.completed-card{border-color:#1a4a30;opacity:.75}
 .recur-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .recur-type{font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500}
 .recur-type.expense{background:var(--redbg);color:var(--red)}
 .recur-type.income{background:var(--greenbg);color:var(--green)}
+.recur-type.installment{background:var(--amberbg);color:var(--amber)}
 .recur-name{font-size:14px;font-weight:500;margin-bottom:2px}
 .recur-info{font-size:12px;color:var(--text3)}
 .recur-amount{font-family:var(--font-heading);font-size:18px;font-weight:700;margin-top:8px}
@@ -130,6 +133,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .recur-btn{flex:1;background:var(--surface3);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px;font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all .15s}
 .recur-btn:hover{border-color:var(--border2);color:var(--text)}
 .recur-btn.del:hover{border-color:var(--red);color:var(--red)}
+/* Installment progress */
+.install-progress{margin-top:10px}
+.install-progress-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.install-progress-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.install-progress-label{font-size:11px;color:var(--text3);display:flex;justify-content:space-between}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding-bottom:24px}
 .chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
 .chart-title{font-family:var(--font-heading);font-size:14px;font-weight:700;margin-bottom:16px}
@@ -154,6 +162,9 @@ canvas{display:block}
 .hist-label{color:var(--text3)}
 .empty{padding:40px;text-align:center;color:var(--text3)}
 .empty-icon{font-size:36px;margin-bottom:10px}
+
+/* Recur type selector in form */
+.type-btn.active-recur{background:var(--accentbg);border-color:var(--accent);color:var(--accent)}
 
 /* ── SAVE TOAST ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#0d2820;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;z-index:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -195,6 +206,8 @@ canvas{display:block}
 .recur-toggle{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer}
 .recur-toggle input{cursor:pointer;accent-color:var(--accent);width:16px;height:16px}
 .recur-toggle label{font-size:13px;cursor:pointer;color:var(--text2)}
+/* Parcelamento hint box */
+.parcela-hint{background:var(--amberbg);border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--amber);margin-top:8px;line-height:1.5}
 .form-actions{display:flex;gap:10px;margin-top:20px}
 .btn-cancel{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;cursor:pointer;font-size:14px;font-family:var(--font-body);color:var(--text2)}
 .btn-cancel:hover{color:var(--text)}
@@ -203,11 +216,7 @@ canvas{display:block}
 
 @media(max-width:640px){
   body{-webkit-text-size-adjust:100%}
-
-  /* App container */
   .app{padding:0 12px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
-
-  /* Header — 2 rows: [logo | buttons] / [tabs] */
   .header{flex-wrap:wrap;padding:12px 0 0;border-bottom:none;gap:0}
   .header-left{order:1;flex:1;min-width:0}
   .session-name{display:none}
@@ -218,32 +227,20 @@ canvas{display:block}
   .tabs{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;background:transparent;border-radius:0;padding:10px 0;gap:6px;border-bottom:1px solid var(--border);margin-top:10px}
   .tabs::-webkit-scrollbar{display:none}
   .tab{white-space:nowrap;flex-shrink:0;font-size:12px;padding:7px 14px;background:var(--surface2)}
-
-  /* Grids */
   .main-grid{grid-template-columns:1fr}
   .sidebar{display:flex}
   .charts-grid{grid-template-columns:1fr}
   .history-grid,.recur-grid{grid-template-columns:1fr}
-
-  /* Summary — 3 colunas compactas */
   .summary{grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 0}
   .card{padding:10px 12px}
   .card-label{font-size:10px;letter-spacing:.5px}
   .card-value{font-size:17px;letter-spacing:-.5px}
   .card-sub{font-size:11px}
-
-  /* Transações */
   .tx-list{max-height:none}
   .tx-del{opacity:1}
   .tx-item{padding:10px 12px}
-
-  /* Recorrentes */
   .recur-grid{padding:10px}
-
-  /* Responsáveis */
   .people-grid{grid-template-columns:1fr}
-
-  /* Histórico */
   .history-grid{padding-bottom:16px}
 }
 </style>
@@ -353,7 +350,7 @@ canvas{display:block}
   <!-- RECURRING -->
   <div class="page" id="page-recurring">
     <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between">
-      <div><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Transações recorrentes</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Lançadas automaticamente todo mês</div></div>
+      <div><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Recorrentes &amp; Parcelamentos</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Lançamentos automáticos mensais e parcelamentos em andamento</div></div>
       <button class="add-btn" onclick="openForm(null,true)">+ Nova recorrente</button>
     </div>
     <div id="recur-summary" style="display:flex;gap:10px;margin-bottom:14px"></div>
@@ -432,7 +429,28 @@ canvas{display:block}
     </div>
     <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="f-category"><option value="alimentação">🍽 Alimentação</option><option value="mercado">🛒 Mercado</option><option value="transporte">🚗 Transporte</option><option value="moradia">🏠 Moradia</option><option value="saúde">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educação">📚 Educação</option><option value="salário">💼 Salário</option><option value="outros">📦 Outros</option></select></div>
     <div class="form-group" id="f-resp-group"><label class="form-label">Responsável</label><div class="resp-selector" id="f-resp-selector"></div></div>
-    <div class="form-group" id="f-recur-group"><label class="form-label">Recorrência</label><div class="recur-toggle"><input type="checkbox" id="f-recur"/><label for="f-recur">Lançar automaticamente todo mês</label></div></div>
+
+    <!-- RECORRÊNCIA / PARCELAMENTO -->
+    <div class="form-group" id="f-recur-group">
+      <label class="form-label">Recorrência</label>
+      <div class="type-toggle" style="grid-template-columns:1fr 1fr 1fr">
+        <button class="type-btn" id="btn-rt-none" onclick="setRecurType('none')">Única</button>
+        <button class="type-btn" id="btn-rt-infinite" onclick="setRecurType('infinite')">↻ Recorrente</button>
+        <button class="type-btn" id="btn-rt-installment" onclick="setRecurType('installment')">☰ Parcelado</button>
+      </div>
+      <!-- Parcelas input -->
+      <div id="f-parcelas-row" style="display:none;margin-top:10px">
+        <label class="form-label">Número de parcelas</label>
+        <div class="form-row">
+          <input class="form-input" id="f-parcelas" type="number" min="2" max="360" placeholder="Ex: 12" value="12" oninput="updateParcelaHint()"/>
+          <div style="display:flex;align-items:center">
+            <div id="f-parcela-total" style="font-size:12px;color:var(--text3);padding:0 4px"></div>
+          </div>
+        </div>
+        <div class="parcela-hint" id="f-parcela-hint"></div>
+      </div>
+    </div>
+
     <div class="form-actions"><button class="btn-cancel" onclick="closeForm()">Cancelar</button><button class="btn-save" onclick="saveTransaction()">Salvar</button></div>
   </div>
 </div>
@@ -446,6 +464,7 @@ const RESP_PALETTE=['#7c6ff7','#3ecf8e','#f87171','#fbbf24','#60a5fa','#c084fc',
 
 let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
+let recurType='none'; // 'none' | 'infinite' | 'installment'
 let currentFileName='montra.json';
 let transactions=[], recurring=[], responsibles=[], paidMonths=[];
 let charts={};
@@ -493,8 +512,6 @@ function loadFromFile(e){
 
 function createNew(){
   transactions=[]; recurring=[]; responsibles=[]; paidMonths=[];
-  // Default responsibles
-  responsibles=[];
   currentFileName='montra.json';
   startApp('novo arquivo');
 }
@@ -507,7 +524,6 @@ function startApp(label){
   currentYear=now.getFullYear(); currentMonth=now.getMonth();
   applyRecurrences();
   render();
-  // Reset tabs
   document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',i===0);});
   document.querySelectorAll('.page').forEach((p,i)=>{p.classList.toggle('active',i===0);});
 }
@@ -521,25 +537,14 @@ function closeSession(){
 
 // ── SAVE TO FILE ──
 function saveToFile(){
-  const data={
-    version:'1.0',
-    savedAt:new Date().toISOString(),
-    transactions,
-    recurring,
-    responsibles,
-    paidMonths
-  };
+  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;
-  a.download=buildFileName();
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  markSaved();
-  showToast();
+  a.href=url; a.download=buildFileName();
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  markSaved(); showToast();
 }
 
 function showToast(){
@@ -560,6 +565,11 @@ function fmt(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,m
 function getCurrentTxs(){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===currentYear&&d.getMonth()===currentMonth;}).sort((a,b)=>b.date.localeCompare(a.date));}
 function getMonthTxs(y,m){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===y&&d.getMonth()===m;});}
 
+// Count how many installments of a recurring have been applied
+function getInstallmentCount(recurId){
+  return transactions.filter(t=>t.recurId===recurId).length;
+}
+
 function applyRecurrences(){
   if(isCurrentPaid()) return;
   const key=`ft_applied_${currentYear}_${currentMonth}`;
@@ -568,7 +578,37 @@ function applyRecurrences(){
   const m=String(currentMonth+1).padStart(2,'0');
   recurring.forEach(r=>{
     const already=transactions.some(t=>t.recurId===r.id&&t.date.startsWith(`${currentYear}-${m}`));
-    if(!already) transactions.push({id:'r'+Date.now()+Math.random(),desc:r.desc,amount:r.amount,type:r.type,category:r.category,date:`${currentYear}-${m}-01`,recurId:r.id,respId:r.respId||null});
+    if(already) return;
+
+    if(r.isInstallment){
+      // Count total applied installments across all months
+      const appliedCount=getInstallmentCount(r.id);
+      if(appliedCount>=r.totalInstallments) return; // All done, don't apply
+      const installmentNum=appliedCount+1;
+      transactions.push({
+        id:'r'+Date.now()+Math.random(),
+        desc:r.desc,
+        amount:r.amount,
+        type:r.type,
+        category:r.category,
+        date:`${currentYear}-${m}-01`,
+        recurId:r.id,
+        respId:r.respId||null,
+        installmentNum,
+        totalInstallments:r.totalInstallments
+      });
+    } else {
+      transactions.push({
+        id:'r'+Date.now()+Math.random(),
+        desc:r.desc,
+        amount:r.amount,
+        type:r.type,
+        category:r.category,
+        date:`${currentYear}-${m}-01`,
+        recurId:r.id,
+        respId:r.respId||null
+      });
+    }
   });
   applied.push(key);
   sessionStorage.setItem('ft_applied',JSON.stringify(applied));
@@ -608,11 +648,22 @@ function render(){
     list.innerHTML=txs.map(t=>{
       const color=getRespColor(t.respId),initials=getRespInitials(t.respId),name=getRespName(t.respId);
       const sid=String(t.id);
+
+      // Badge: installment or recurring
+      let badge='';
+      if(t.recurId){
+        if(t.installmentNum){
+          badge=`<span class="install-badge">${t.installmentNum}/${t.totalInstallments}</span>`;
+        } else {
+          badge='<span class="recur-badge">↻</span>';
+        }
+      }
+
       return `<div class="tx-item${paid?' locked':''}" data-txid="${sid}">
         ${paid?'<div class="tx-paid-dot"></div>':''}
         <div class="tx-icon" style="background:${CAT_COLORS[t.category]||'#94a3b8'}22">${CAT_ICONS[t.category]||'📦'}</div>
         <div class="tx-info">
-          <div class="tx-name">${escHtml(t.desc)}${t.recurId?'<span class="recur-badge">↻</span>':''}</div>
+          <div class="tx-name">${escHtml(t.desc)}${badge}</div>
           <div class="tx-meta"><span style="color:var(--text3)">${t.category}</span>${t.respId?`<span class="resp-chip" style="background:${color}22;color:${color}"><span style="width:14px;height:14px;border-radius:50%;background:${color};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</span>${name}</span>`:''}</div>
         </div>
         <div class="tx-date">${t.date.slice(8,10)}/${t.date.slice(5,7)}</div>
@@ -698,26 +749,86 @@ function renderHistory(){
 }
 function goToMonth(y,m){currentYear=y;currentMonth=m;showPage('transactions',document.querySelector('.tab'));render();}
 
-// ── RECURRING ──
+// ── RECURRING + INSTALLMENTS ──
 function renderRecurring(){
-  const totalExp=recurring.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amount,0);
-  const totalInc=recurring.filter(r=>r.type==='income').reduce((s,r)=>s+r.amount,0);
-  document.getElementById('recur-summary').innerHTML=`<div class="card" style="flex:1"><div class="card-label">Receitas fixas</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(totalInc)}</div></div><div class="card" style="flex:1"><div class="card-label">Despesas fixas</div><div class="card-value" style="color:var(--red);font-size:20px">${fmt(totalExp)}</div></div><div class="card" style="flex:1"><div class="card-label">Saldo fixo</div><div class="card-value" style="font-size:20px;color:${totalInc-totalExp>=0?'var(--green)':'var(--red)'}">${fmt(totalInc-totalExp)}</div></div>`;
+  const infiniteExp=recurring.filter(r=>!r.isInstallment&&r.type==='expense').reduce((s,r)=>s+r.amount,0);
+  const infiniteInc=recurring.filter(r=>!r.isInstallment&&r.type==='income').reduce((s,r)=>s+r.amount,0);
+
+  // Active installments (not completed)
+  const activeInstallments=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)<r.totalInstallments);
+  const installmentMonthly=activeInstallments.reduce((s,r)=>s+(r.type==='expense'?r.amount:-r.amount),0);
+
+  document.getElementById('recur-summary').innerHTML=`
+    <div class="card" style="flex:1"><div class="card-label">Receitas fixas</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(infiniteInc)}</div></div>
+    <div class="card" style="flex:1"><div class="card-label">Despesas fixas</div><div class="card-value" style="color:var(--red);font-size:20px">${fmt(infiniteExp)}</div></div>
+    <div class="card" style="flex:1"><div class="card-label">Parcelas/mês</div><div class="card-value" style="font-size:20px;color:${installmentMonthly<=0?'var(--red)':'var(--text)'}">${fmt(Math.abs(installmentMonthly))}</div><div class="card-sub">${activeInstallments.length} parcelamento${activeInstallments.length!==1?'s':''} ativo${activeInstallments.length!==1?'s':''}</div></div>
+  `;
+
   const rl=document.getElementById('recur-list');
-  if(!recurring.length){rl.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><div>Nenhuma transação recorrente</div></div>';return;}
-  rl.innerHTML=`<div class="recur-grid">${recurring.map(r=>{
+  if(!recurring.length){rl.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><div>Nenhuma transação recorrente ou parcelamento</div></div>';return;}
+
+  // Separate: infinite recurring first, then installments (active first, completed last)
+  const infinites=recurring.filter(r=>!r.isInstallment);
+  const installmentsActive=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)<r.totalInstallments);
+  const installmentsDone=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)>=r.totalInstallments);
+  const ordered=[...infinites,...installmentsActive,...installmentsDone];
+
+  rl.innerHTML=`<div class="recur-grid">${ordered.map(r=>{
     const color=getRespColor(r.respId),initials=getRespInitials(r.respId),name=getRespName(r.respId);
     const sid=String(r.id);
-    return `<div class="recur-card">
-      <div class="recur-top"><div style="font-size:22px">${CAT_ICONS[r.category]||'📦'}</div><span class="recur-type ${r.type}">${r.type==='expense'?'Despesa':'Receita'}</span></div>
-      <div class="recur-name">${escHtml(r.desc)}</div><div class="recur-info">${r.category} · todo dia 1°</div>
-      ${r.respId?`<div style="display:flex;align-items:center;gap:5px;margin-top:6px"><div style="width:16px;height:16px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</div><span style="font-size:12px;color:${color}">${name}</span></div>`:''}
-      <div class="recur-amount ${r.type==='income'?'pos':'neg'}">${r.type==='income'?'+':'-'}${fmt(r.amount)}</div>
-      <div class="recur-actions">
-        <button class="recur-btn" data-edit-recur="${sid}">Editar</button>
-        <button class="recur-btn del" data-del-recur="${sid}">Remover</button>
-      </div>
-    </div>`;
+
+    if(r.isInstallment){
+      const appliedCount=getInstallmentCount(r.id);
+      const completed=appliedCount>=r.totalInstallments;
+      const pct=Math.min(100,Math.round(appliedCount/r.totalInstallments*100));
+      const remaining=r.totalInstallments-appliedCount;
+      const totalPaid=appliedCount*r.amount;
+      const totalRemaining=remaining*r.amount;
+
+      return `<div class="recur-card${completed?' completed-card':''}">
+        <div class="recur-top">
+          <div style="font-size:22px">${CAT_ICONS[r.category]||'📦'}</div>
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+            <span class="recur-type installment">Parcelado</span>
+            ${completed?'<span style="background:var(--greenbg);color:var(--green);font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;border:1px solid #1a4a30">✓ Quitado</span>':''}
+          </div>
+        </div>
+        <div class="recur-name">${escHtml(r.desc)}</div>
+        <div class="recur-info">${r.category}</div>
+        ${r.respId?`<div style="display:flex;align-items:center;gap:5px;margin-top:4px"><div style="width:16px;height:16px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</div><span style="font-size:12px;color:${color}">${name}</span></div>`:''}
+        <div class="recur-amount ${r.type==='income'?'pos':'neg'}">${r.type==='income'?'+':'-'}${fmt(r.amount)}<span style="font-size:12px;font-weight:400;color:var(--text3)"> /parcela</span></div>
+        <div class="install-progress">
+          <div class="install-progress-bar">
+            <div class="install-progress-fill" style="width:${pct}%;background:${completed?'var(--green)':'var(--accent)'}"></div>
+          </div>
+          <div class="install-progress-label">
+            <span>${appliedCount} de ${r.totalInstallments} parcelas</span>
+            <span>${pct}%</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;display:flex;justify-content:space-between">
+            <span>Pago: ${fmt(totalPaid)}</span>
+            ${!completed?`<span>Restante: ${fmt(totalRemaining)}</span>`:''}
+          </div>
+          ${!completed?`<div style="font-size:11px;color:var(--amber);margin-top:3px">↓ Próxima: ${appliedCount+1}ª parcela</div>`:''}
+        </div>
+        <div class="recur-actions">
+          ${!completed?`<button class="recur-btn" data-edit-recur="${sid}">Editar</button>`:''}
+          <button class="recur-btn del" data-del-recur="${sid}">${completed?'Remover':'Cancelar'}</button>
+        </div>
+      </div>`;
+    } else {
+      // Regular infinite recurring
+      return `<div class="recur-card">
+        <div class="recur-top"><div style="font-size:22px">${CAT_ICONS[r.category]||'📦'}</div><span class="recur-type ${r.type}">${r.type==='expense'?'Despesa':'Receita'}</span></div>
+        <div class="recur-name">${escHtml(r.desc)}</div><div class="recur-info">${r.category} · todo dia 1°</div>
+        ${r.respId?`<div style="display:flex;align-items:center;gap:5px;margin-top:6px"><div style="width:16px;height:16px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</div><span style="font-size:12px;color:${color}">${name}</span></div>`:''}
+        <div class="recur-amount ${r.type==='income'?'pos':'neg'}">${r.type==='income'?'+':'-'}${fmt(r.amount)}</div>
+        <div class="recur-actions">
+          <button class="recur-btn" data-edit-recur="${sid}">Editar</button>
+          <button class="recur-btn del" data-del-recur="${sid}">Remover</button>
+        </div>
+      </div>`;
+    }
   }).join('')}</div>`;
 }
 
@@ -763,14 +874,12 @@ function renderPeople(){
 function renderCharts(){
   Chart.defaults.color='#9b99b0';Chart.defaults.font={family:"'DM Sans',sans-serif",size:12};
 
-  // Bar: Receitas vs Despesas últimos 6 meses
   const labels=[],incData=[],expData=[];
   for(let i=5;i>=0;i--){let m=currentMonth-i,y=currentYear;if(m<0){m+=12;y--;}labels.push(MONTHS_SHORT[m]);const txs=getMonthTxs(y,m);incData.push(txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0));expData.push(txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));}
   if(charts.bar)charts.bar.destroy();
   charts.bar=new Chart(document.getElementById('chart-bar'),{type:'bar',data:{labels,datasets:[{label:'Receitas',data:incData,backgroundColor:'#3ecf8e44',borderColor:'#3ecf8e',borderWidth:2,borderRadius:6},{label:'Despesas',data:expData,backgroundColor:'#f8717144',borderColor:'#f87171',borderWidth:2,borderRadius:6}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{grid:{color:'#2a2a38'}},y:{grid:{color:'#2a2a38'},ticks:{callback:v=>'R$'+Math.round(v/1000)+'k'}}}}});
 
-  // Accumulated patrimony — only closed months, all time
-  const closedKeys=paidMonths.slice().sort(); // "YYYY-MM", lexicographic = chronological
+  const closedKeys=paidMonths.slice().sort();
   const accumLabels=[],accumInc=[],accumExp=[],accumBal=[];
   let totalInc=0,totalExp=0;
   closedKeys.forEach(key=>{
@@ -825,13 +934,11 @@ function renderCharts(){
     document.getElementById('chart-accum-stats').innerHTML=`<div style="color:var(--text3);font-size:13px;padding:8px 0">Feche pelo menos um mês para ver o patrimônio acumulado.</div>`;
   }
 
-  // Pie: categories
   const txs=getCurrentTxs().filter(t=>t.type==='expense'),catT={};txs.forEach(t=>{catT[t.category]=(catT[t.category]||0)+t.amount;});
   const cats=Object.keys(catT);
   if(charts.pie)charts.pie.destroy();
   if(cats.length)charts.pie=new Chart(document.getElementById('chart-pie'),{type:'doughnut',data:{labels:cats.map(c=>c.charAt(0).toUpperCase()+c.slice(1)),datasets:[{data:cats.map(c=>catT[c]),backgroundColor:cats.map(c=>(CAT_COLORS[c]||'#94a3b8')+'cc'),borderColor:'#18181f',borderWidth:2,hoverOffset:6}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:10}}}}});
 
-  // Donut: by responsible
   const respT={};txs.forEach(t=>{if(t.respId){respT[t.respId]=(respT[t.respId]||0)+t.amount;}});
   const rids=Object.keys(respT);
   if(charts.resp)charts.resp.destroy();
@@ -849,18 +956,64 @@ function selectResp(id,el){
   selectedResp=id;
   document.querySelectorAll('.resp-opt').forEach(o=>{const oid=o.dataset.id||null,active=oid===id;o.classList.toggle('selected',active);if(active&&id){const c=getRespColor(id);o.style.cssText=`background:${c}22;border-color:${c};color:${c}`;}else if(active){o.style.cssText='background:var(--surface3);border-color:var(--accent);color:var(--text)';}else{o.style.cssText='';}});
 }
+
+// ── RECUR TYPE SELECTOR ──
+function setRecurType(type){
+  recurType=type;
+  ['none','infinite','installment'].forEach(t=>{
+    const btn=document.getElementById('btn-rt-'+t);
+    if(btn) btn.className='type-btn'+(t===type?' active-recur':'');
+  });
+  const pr=document.getElementById('f-parcelas-row');
+  if(pr) pr.style.display=type==='installment'?'block':'none';
+  if(type==='installment') updateParcelaHint();
+}
+
+function updateParcelaHint(){
+  const amount=parseFloat(document.getElementById('f-amount').value)||0;
+  const parcelas=parseInt(document.getElementById('f-parcelas').value)||0;
+  const hint=document.getElementById('f-parcela-hint');
+  if(!hint) return;
+  if(parcelas>=2&&amount>0){
+    const total=amount*parcelas;
+    hint.textContent=`${parcelas}× de ${fmt(amount)} = ${fmt(total)} no total`;
+  } else if(parcelas>=2){
+    hint.textContent=`${parcelas} parcelas — informe o valor para ver o total`;
+  } else {
+    hint.textContent='Informe o número de parcelas (mínimo 2)';
+  }
+}
+
 function openForm(tx,recurMode=false,recurTx=null){
   if(!recurMode&&isCurrentPaid()){alert('Este mês está fechado. Reabra o mês para adicionar transações.');return;}
-  isRecurringForm=recurMode;editingRecurId=recurTx?recurTx.id:null;
+  isRecurringForm=recurMode; editingRecurId=recurTx?recurTx.id:null;
   document.getElementById('form-title').textContent=recurMode?'Transação recorrente':'Nova transação';
   document.getElementById('f-date-group').style.display=recurMode?'none':'block';
-  document.getElementById('f-recur-group').style.display=recurMode?'none':'block';
+
+  // Show recur type only for new (non-edit, non-recurMode) transactions
+  const isEdit=!!(tx&&tx.id);
+  document.getElementById('f-recur-group').style.display=(recurMode||isEdit)?'none':'block';
+
   const src=tx||recurTx;
   document.getElementById('f-desc').value=src?src.desc:'';
   document.getElementById('f-amount').value=src?src.amount:'';
   document.getElementById('f-date').value=src?src.date:new Date().toISOString().split('T')[0];
   document.getElementById('f-category').value=src?src.category:'alimentação';
-  document.getElementById('f-recur').checked=false;
+
+  // Reset recur type for new transactions
+  if(!recurMode&&!isEdit) setRecurType('none');
+
+  // For editing a recurring installment — pre-populate parcelas field  
+  if(recurMode&&recurTx&&recurTx.isInstallment){
+    // show parcelas info (read-only context)
+    document.getElementById('f-recur-group').style.display='block';
+    setRecurType('installment');
+    document.getElementById('f-parcelas').value=recurTx.totalInstallments;
+    updateParcelaHint();
+  } else if(recurMode) {
+    document.getElementById('f-recur-group').style.display='none';
+  }
+
   setType(src?src.type:'expense');
   buildRespSelector(src?src.respId:null);
   document.getElementById('overlay').dataset.editId=tx?tx.id:'';
@@ -869,24 +1022,73 @@ function openForm(tx,recurMode=false,recurTx=null){
 }
 function closeForm(){document.getElementById('overlay').classList.add('hidden');}
 function setType(t){formType=t;document.getElementById('btn-expense').className='type-btn'+(t==='expense'?' active-expense':'');document.getElementById('btn-income').className='type-btn'+(t==='income'?' active-income':'');}
+
 function saveTransaction(){
-  const desc=document.getElementById('f-desc').value.trim(),amount=parseFloat(document.getElementById('f-amount').value),date=document.getElementById('f-date').value,category=document.getElementById('f-category').value,isRecur=document.getElementById('f-recur').checked;
+  const desc=document.getElementById('f-desc').value.trim();
+  const amount=parseFloat(document.getElementById('f-amount').value);
+  const date=document.getElementById('f-date').value;
+  const category=document.getElementById('f-category').value;
+
   if(!desc||!amount){alert('Preencha descrição e valor');return;}
+
   if(isRecurringForm){
-    const obj={id:editingRecurId||('rec'+Date.now()),desc,amount,type:formType,category,respId:selectedResp};
-    if(editingRecurId){const idx=recurring.findIndex(r=>String(r.id)===String(editingRecurId));if(idx>-1)recurring[idx]=obj;}else recurring.push(obj);
-    markUnsaved();
-    closeForm();renderRecurring();return;
+    const obj={
+      id:editingRecurId||('rec'+Date.now()),
+      desc,amount,type:formType,category,respId:selectedResp,
+      isInstallment:editingRecurId?findRecur(editingRecurId)?.isInstallment||false:false,
+      totalInstallments:editingRecurId?findRecur(editingRecurId)?.totalInstallments||null:null
+    };
+    // If editing an installment, allow updating totalInstallments
+    if(obj.isInstallment){
+      const newTotal=parseInt(document.getElementById('f-parcelas').value)||obj.totalInstallments;
+      const applied=getInstallmentCount(obj.id);
+      if(newTotal<applied){alert(`Já foram lançadas ${applied} parcelas. O total não pode ser menor que isso.`);return;}
+      obj.totalInstallments=newTotal;
+    }
+    if(editingRecurId){const idx=recurring.findIndex(r=>String(r.id)===String(editingRecurId));if(idx>-1)recurring[idx]=obj;}
+    else recurring.push(obj);
+    markUnsaved();closeForm();renderRecurring();return;
   }
+
   if(!date){alert('Informe a data');return;}
   const editId=document.getElementById('overlay').dataset.editId;
-  let recurId=null;
-  if(isRecur){const nr={id:'rec'+Date.now(),desc,amount,type:formType,category,respId:selectedResp};recurring.push(nr);recurId=nr.id;}
-  if(editId){const idx=transactions.findIndex(t=>String(t.id)===String(editId));if(idx>-1)transactions[idx]={...transactions[idx],desc,amount,type:formType,category,date,respId:selectedResp};}
-  else transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,recurId,respId:selectedResp});
-  markUnsaved();
-  closeForm();render();
+
+  if(editId){
+    // Editing existing transaction — just update fields
+    const idx=transactions.findIndex(t=>String(t.id)===String(editId));
+    if(idx>-1) transactions[idx]={...transactions[idx],desc,amount,type:formType,category,date,respId:selectedResp};
+  } else {
+    // New transaction
+    if(recurType==='installment'){
+      const totalParcelas=parseInt(document.getElementById('f-parcelas').value)||2;
+      if(totalParcelas<2){alert('O número de parcelas deve ser pelo menos 2.');return;}
+      const nr={
+        id:'rec'+Date.now(),
+        desc,amount,type:formType,category,respId:selectedResp,
+        isInstallment:true,
+        totalInstallments:totalParcelas
+      };
+      recurring.push(nr);
+      // First installment in current month
+      transactions.push({
+        id:'tx'+Date.now(),
+        desc,amount,type:formType,category,date,
+        recurId:nr.id,respId:selectedResp,
+        installmentNum:1,
+        totalInstallments:totalParcelas
+      });
+    } else if(recurType==='infinite'){
+      const nr={id:'rec'+Date.now(),desc,amount,type:formType,category,respId:selectedResp,isInstallment:false};
+      recurring.push(nr);
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,recurId:nr.id,respId:selectedResp});
+    } else {
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,respId:selectedResp});
+    }
+  }
+
+  markUnsaved();closeForm();render();
 }
+
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function findTx(id){return transactions.find(t=>String(t.id)===String(id));}
 function findRecur(id){return recurring.find(r=>String(r.id)===String(id));}
@@ -894,8 +1096,7 @@ function findRecur(id){return recurring.find(r=>String(r.id)===String(id));}
 function deleteTx(id){
   if(isCurrentPaid())return;
   transactions=transactions.filter(t=>String(t.id)!==String(id));
-  markUnsaved();
-  render();
+  markUnsaved();render();
 }
 function editTx(id){
   if(isCurrentPaid())return;
@@ -903,15 +1104,20 @@ function editTx(id){
   if(tx)openForm(tx);
 }
 function deleteRecur(id){
-  if(!confirm('Remover esta recorrente?'))return;
+  const r=findRecur(id);
+  const appliedCount=r&&r.isInstallment?getInstallmentCount(r.id):0;
+  const msg=r&&r.isInstallment
+    ?`Cancelar parcelamento "${r.desc}"?\n${appliedCount} de ${r.totalInstallments} parcelas já foram lançadas.\n\nAs parcelas já lançadas serão mantidas nas transações.`
+    :`Remover esta recorrente?`;
+  if(!confirm(msg))return;
   recurring=recurring.filter(r=>String(r.id)!==String(id));
-  markUnsaved();
-  renderRecurring();
+  markUnsaved();renderRecurring();
 }
 function editRecur(id){
   const r=findRecur(id);
   if(r)openForm(null,true,r);
 }
+
 // Event delegation — transaction list
 document.getElementById('tx-list').addEventListener('click',function(e){
   const delBtn=e.target.closest('[data-del]');
@@ -930,8 +1136,11 @@ document.getElementById('pay-modal').addEventListener('click',function(e){if(e.t
 document.getElementById('unlock-modal').addEventListener('click',function(e){if(e.target===this)closeUnlockModal();});
 document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeForm();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeForm();}});
-// Ctrl+S / Cmd+S to save
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
+
+// Update hint when amount changes
+document.getElementById('f-amount').addEventListener('input',()=>{if(recurType==='installment')updateParcelaHint();});
+
 // ── EXTRATO PDF ──
 function printExtrato(){
   const txs=getCurrentTxs().slice().sort((a,b)=>a.date.localeCompare(b.date));
@@ -950,9 +1159,17 @@ function printExtrato(){
     const sign=t.type==='income'?'+':'-';
     const color=t.type==='income'?'#16a34a':'#dc2626';
     const balColor=running>=0?'#16a34a':'#dc2626';
+    let badgeHtml='';
+    if(t.recurId){
+      if(t.installmentNum){
+        badgeHtml=`<span class="badge" style="background:#fef9c3;color:#a16207">${t.installmentNum}/${t.totalInstallments}</span>`;
+      } else {
+        badgeHtml='<span class="badge">Recorrente</span>';
+      }
+    }
     return `<tr>
       <td>${t.date.slice(8,10)}/${t.date.slice(5,7)}/${t.date.slice(0,4)}</td>
-      <td>${t.desc}${t.recurId?'<span class="badge">Recorrente</span>':''}</td>
+      <td>${escHtml(t.desc)}${badgeHtml}</td>
       <td>${t.category.charAt(0).toUpperCase()+t.category.slice(1)}</td>
       <td>${getRespName(t.respId)!=='—'?getRespName(t.respId):'—'}</td>
       <td style="color:${color};text-align:right;font-weight:600">${sign} ${fmtNum(t.amount)}</td>
@@ -966,8 +1183,7 @@ function printExtrato(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a2e;background:#fff;padding:32px 40px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1a2e;padding-bottom:16px;margin-bottom:20px}
-    .logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px}
-    .logo-dot{width:10px;height:10px;border-radius:50%;background:#7c6ff7}
+    .logo{font-size:22px;font-weight:800;letter-spacing:-0.5px}
     .header-info{text-align:right;color:#555}
     .header-info .period{font-size:16px;font-weight:700;color:#1a1a2e}
     .status-badge{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;${isPaid?'background:#dcfce7;color:#16a34a;border:1px solid #86efac':'background:#fef9c3;color:#a16207;border:1px solid #fde047'}}
@@ -989,10 +1205,7 @@ function printExtrato(){
     @media print{body{padding:20px 24px}@page{margin:1cm}}
   </style></head><body>
   <div class="header">
-    <div>
-      <div class="logo"></div>Montra</div>
-      <div style="margin-top:4px;font-size:12px;color:#888">Extrato mensal de transações</div>
-    </div>
+    <div><div class="logo">Montra</div><div style="margin-top:4px;font-size:12px;color:#888">Extrato mensal de transações</div></div>
     <div class="header-info">
       <div class="period">${monthLabel}</div>
       <div style="font-size:11px;margin-top:2px">Emitido em ${generated}</div>

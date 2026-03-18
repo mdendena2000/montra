@@ -722,7 +722,7 @@ function renderRecurring(){
 
 // ── PEOPLE ──
 function renderRespTags(){
-  document.getElementById('resp-tags').innerHTML=responsibles.map(r=>`<div class="resp-tag" style="color:${getRespColor(r.id)};border-color:${getRespColor(r.id)}44;background:${getRespColor(r.id)}11"><span>${r.name}</span><button class="resp-tag-del" onclick="removeResponsible('${r.id}')" style="color:${getRespColor(r.id)}">✕</button></div>`).join('');
+  document.getElementById('resp-tags').innerHTML=responsibles.map(r=>`<div class="resp-tag" style="color:${getRespColor(r.id)};border-color:${getRespColor(r.id)}44;background:${getRespColor(r.id)}11; margin-bottom: 5px;"><span>${r.name}</span><button class="resp-tag-del" onclick="removeResponsible('${r.id}')" style="color:${getRespColor(r.id)}">✕</button></div>`).join('');
 }
 function addResponsible(){
   const inp=document.getElementById('new-resp-input'),name=inp.value.trim();

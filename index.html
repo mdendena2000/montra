@@ -251,6 +251,38 @@ canvas{display:block}
 .annual-table tr:last-child td{border-bottom:none}
 .annual-table tr:hover td{background:var(--surface2)}
 
+/* ── INVESTMENTS ── */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding-bottom:24px}
+.inv-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;transition:border-color .15s}
+.inv-card:hover{border-color:var(--border2)}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.inv-name{font-family:var(--font-heading);font-size:16px;font-weight:700}
+.inv-type-badge{font-size:10px;padding:3px 8px;border-radius:5px;font-weight:600;white-space:nowrap}
+.inv-balance{font-family:var(--font-heading);font-size:24px;font-weight:700;margin:8px 0}
+.inv-stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.inv-stat{flex:1;min-width:80px}
+.inv-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:2px}
+.inv-stat-value{font-family:var(--font-heading);font-size:14px;font-weight:600}
+.inv-actions{display:flex;gap:6px;margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.inv-btn{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all .15s;text-align:center;font-weight:500}
+.inv-btn:hover{border-color:var(--border2);color:var(--text)}
+.inv-btn.apply{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.inv-btn.apply:hover{background:var(--green);color:#0d2820}
+.inv-btn.redeem{border-color:var(--amber);color:var(--amber);background:var(--amberbg)}
+.inv-btn.redeem:hover{background:var(--amber);color:#261d08}
+.inv-btn.del:hover{border-color:var(--red);color:var(--red)}
+.inv-history{margin-top:12px;max-height:200px;overflow-y:auto}
+.inv-history::-webkit-scrollbar{width:4px}
+.inv-history::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.inv-tx{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.inv-tx:last-child{border-bottom:none}
+.inv-tx-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.inv-tx-info{flex:1;min-width:0}
+.inv-tx-desc{font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-tx-date{font-size:11px;color:var(--text3)}
+.inv-tx-amount{font-family:var(--font-heading);font-size:14px;font-weight:600;white-space:nowrap}
+.inv-detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+
 /* ── INSTALLMENT ALERTS ── */
 .alert-banner{background:var(--amberbg);border:1px solid #3d2e00;border-radius:12px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--amber)}
 .alert-banner-icon{font-size:18px;flex-shrink:0}
@@ -288,6 +320,7 @@ canvas{display:block}
   .tx-toolbar{padding:8px 12px}
   .tx-search{min-width:100%}
   .annual-grid{grid-template-columns:1fr}
+  .inv-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -336,6 +369,7 @@ canvas{display:block}
       <button class="tab" onclick="showPage('recurring',this)">Recorrentes</button>
       <button class="tab" onclick="showPage('charts',this)">Gráficos</button>
       <button class="tab" onclick="showPage('people',this)">Responsáveis</button>
+      <button class="tab" onclick="showPage('investments',this)">Investimentos</button>
       <button class="tab" onclick="showPage('annual',this)">Resumo Anual</button>
       <button class="tab" onclick="showPage('history',this)">Histórico</button>
     </div>
@@ -443,6 +477,16 @@ canvas{display:block}
     </div>
   </div>
 
+  <!-- INVESTMENTS -->
+  <div class="page" id="page-investments">
+    <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Investimentos</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Gerencie suas aplicações e resgates</div></div>
+      <button class="add-btn" onclick="openInvForm()">+ Novo investimento</button>
+    </div>
+    <div id="inv-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+    <div class="inv-grid" id="inv-list"></div>
+  </div>
+
   <!-- ANNUAL SUMMARY -->
   <div class="page" id="page-annual">
     <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -515,6 +559,47 @@ canvas{display:block}
   </div>
 </div>
 
+<!-- INVESTMENT FORM MODAL -->
+<div class="overlay hidden" id="inv-form-overlay">
+  <div class="form-card">
+    <div class="form-title" id="inv-form-title">Novo investimento</div>
+    <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="inv-name" placeholder="Ex: Tesouro Selic 2029"/></div>
+    <div class="form-group"><label class="form-label">Tipo</label><select class="form-input" id="inv-type">
+      <option value="renda-fixa">📊 Renda Fixa</option>
+      <option value="acoes">📈 Ações</option>
+      <option value="fii">🏢 Fundos Imobiliários</option>
+      <option value="cripto">🪙 Criptomoedas</option>
+      <option value="poupanca">🏦 Poupança</option>
+      <option value="fundo">💼 Fundo de Investimento</option>
+      <option value="outro">📦 Outro</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Observação (opcional)</label><input class="form-input" id="inv-note" placeholder="Ex: Vencimento em 2029"/></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeInvForm()">Cancelar</button><button class="btn-save" onclick="saveInvestment()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- INVESTMENT OPERATION MODAL -->
+<div class="overlay hidden" id="inv-op-overlay">
+  <div class="form-card">
+    <div class="form-title" id="inv-op-title">Aplicação</div>
+    <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input" id="inv-op-amount" type="number" placeholder="0,00" min="0" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="inv-op-date" type="date"/></div>
+    <div class="form-group"><label class="form-label">Descrição (opcional)</label><input class="form-input" id="inv-op-desc" placeholder="Ex: Aporte mensal"/></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeInvOp()">Cancelar</button><button class="btn-save" id="inv-op-save-btn" onclick="saveInvOperation()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- INVESTMENT DETAIL MODAL -->
+<div class="overlay hidden" id="inv-detail-overlay">
+  <div class="form-card" style="width:500px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="form-title" id="inv-detail-title" style="margin-bottom:0">Detalhes</div>
+      <button class="btn-cancel" onclick="closeInvDetail()" style="padding:6px 12px;flex:none">✕</button>
+    </div>
+    <div id="inv-detail-content"></div>
+  </div>
+</div>
+
 <!-- FORM OVERLAY -->
 <div class="overlay hidden" id="overlay">
   <div class="form-card">
@@ -566,14 +651,14 @@ let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
 let recurType='none'; // 'none' | 'infinite' | 'installment'
 let currentFileName='montra.json';
-let transactions=[], recurring=[], responsibles=[], paidMonths=[], budgets={};
+let transactions=[], recurring=[], responsibles=[], paidMonths=[], budgets={}, investments=[];
 let charts={};
 let pendingDeleteId=null;
 let annualYear=new Date().getFullYear();
 
 const LS_KEY='montra_data';
 function saveToLS(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets}));}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets,investments}));}catch(e){}
 }
 
 function buildFileName(){
@@ -604,6 +689,7 @@ function loadFromFile(e){
       responsibles=data.responsibles||[];
       paidMonths=data.paidMonths||[];
       budgets=data.budgets||{};
+      investments=data.investments||[];
       currentFileName=file.name;
       saveToLS();
       startApp(file.name);
@@ -614,7 +700,7 @@ function loadFromFile(e){
 }
 
 function createNew(){
-  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[]; budgets={};
+  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[]; budgets={}; investments=[];
   currentFileName='montra.json';
   startApp('novo arquivo');
 }
@@ -640,7 +726,7 @@ function closeSession(){
 
 // ── SAVE TO FILE ──
 function saveToFile(){
-  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets};
+  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets,investments};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -917,6 +1003,7 @@ function showPage(name,el){
   if(name==='people') renderPeople();
   if(name==='history') renderHistory();
   if(name==='annual') renderAnnual();
+  if(name==='investments') renderInvestments();
 }
 
 // ── HISTORY ──
@@ -1430,6 +1517,194 @@ function renderAnnual(){
     </div>`:'';
 }
 
+// ── INVESTMENTS ──
+const INV_TYPES={'renda-fixa':{icon:'📊',label:'Renda Fixa',color:'#60a5fa'},'acoes':{icon:'📈',label:'Ações',color:'#3ecf8e'},'fii':{icon:'🏢',label:'FII',color:'#c084fc'},'cripto':{icon:'🪙',label:'Cripto',color:'#fbbf24'},'poupanca':{icon:'🏦',label:'Poupança',color:'#38bdf8'},'fundo':{icon:'💼',label:'Fundo',color:'#fb923c'},'outro':{icon:'📦',label:'Outro',color:'#94a3b8'}};
+let editingInvId=null, invOpType=null, invOpTargetId=null;
+
+function getInvBalance(inv){
+  return (inv.operations||[]).reduce((s,op)=>s+(op.type==='apply'?op.amount:-op.amount),0);
+}
+function getInvTotalApplied(inv){return (inv.operations||[]).filter(op=>op.type==='apply').reduce((s,op)=>s+op.amount,0);}
+function getInvTotalRedeemed(inv){return (inv.operations||[]).filter(op=>op.type==='redeem').reduce((s,op)=>s+op.amount,0);}
+
+function renderInvestments(){
+  const totalBalance=investments.reduce((s,inv)=>s+getInvBalance(inv),0);
+  const totalApplied=investments.reduce((s,inv)=>s+getInvTotalApplied(inv),0);
+  const totalRedeemed=investments.reduce((s,inv)=>s+getInvTotalRedeemed(inv),0);
+
+  document.getElementById('inv-summary').innerHTML=`
+    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Patrimônio investido</div><div class="card-value" style="color:var(--accent);font-size:20px">${fmt(totalBalance)}</div><div class="card-sub">${investments.length} investimento${investments.length!==1?'s':''}</div></div>
+    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Total aplicado</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(totalApplied)}</div></div>
+    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Total resgatado</div><div class="card-value" style="color:var(--amber);font-size:20px">${fmt(totalRedeemed)}</div></div>
+  `;
+
+  const list=document.getElementById('inv-list');
+  if(!investments.length){
+    list.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div>Nenhum investimento cadastrado</div><div style="font-size:12px;margin-top:4px;color:var(--text3)">Clique em "+ Novo investimento" para começar</div></div>';
+    return;
+  }
+
+  list.innerHTML=investments.map(inv=>{
+    const t=INV_TYPES[inv.type]||INV_TYPES.outro;
+    const balance=getInvBalance(inv);
+    const applied=getInvTotalApplied(inv);
+    const redeemed=getInvTotalRedeemed(inv);
+    const ops=(inv.operations||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+    const recentOps=ops.slice(0,3);
+    const sid=String(inv.id);
+
+    return `<div class="inv-card" data-invid="${sid}">
+      <div class="inv-header">
+        <div>
+          <div class="inv-name">${t.icon} ${escHtml(inv.name)}</div>
+          ${inv.note?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${escHtml(inv.note)}</div>`:''}
+        </div>
+        <span class="inv-type-badge" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}44">${t.label}</span>
+      </div>
+      <div class="inv-balance" style="color:${balance>=0?'var(--text)':'var(--red)'}">${fmt(balance)}</div>
+      <div class="inv-stats">
+        <div class="inv-stat"><div class="inv-stat-label">Aplicado</div><div class="inv-stat-value" style="color:var(--green)">${fmt(applied)}</div></div>
+        <div class="inv-stat"><div class="inv-stat-label">Resgatado</div><div class="inv-stat-value" style="color:var(--amber)">${fmt(redeemed)}</div></div>
+        <div class="inv-stat"><div class="inv-stat-label">Operações</div><div class="inv-stat-value">${ops.length}</div></div>
+      </div>
+      ${recentOps.length?`<div class="inv-history">${recentOps.map(op=>`
+        <div class="inv-tx">
+          <div class="inv-tx-icon" style="background:${op.type==='apply'?'var(--greenbg)':'var(--amberbg)'}">${op.type==='apply'?'↑':'↓'}</div>
+          <div class="inv-tx-info">
+            <div class="inv-tx-desc">${op.desc||( op.type==='apply'?'Aplicação':'Resgate')}</div>
+            <div class="inv-tx-date">${op.date.slice(8,10)}/${op.date.slice(5,7)}/${op.date.slice(0,4)}</div>
+          </div>
+          <div class="inv-tx-amount" style="color:${op.type==='apply'?'var(--green)':'var(--amber)'}">${op.type==='apply'?'+':'-'}${fmt(op.amount)}</div>
+        </div>`).join('')}
+        ${ops.length>3?`<div style="text-align:center;padding:6px 0"><button class="budget-edit" onclick="openInvDetail('${sid}')" style="font-size:12px">Ver todas (${ops.length})</button></div>`:''}
+      </div>`:''}
+      <div class="inv-actions">
+        <button class="inv-btn apply" onclick="openInvOp('${sid}','apply')">+ Aplicar</button>
+        <button class="inv-btn redeem" onclick="openInvOp('${sid}','redeem')">↓ Resgatar</button>
+        <button class="inv-btn" onclick="openInvForm('${sid}')">Editar</button>
+        <button class="inv-btn del" onclick="deleteInvestment('${sid}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openInvForm(id){
+  editingInvId=id||null;
+  const inv=id?investments.find(i=>String(i.id)===String(id)):null;
+  document.getElementById('inv-form-title').textContent=inv?'Editar investimento':'Novo investimento';
+  document.getElementById('inv-name').value=inv?inv.name:'';
+  document.getElementById('inv-type').value=inv?inv.type:'renda-fixa';
+  document.getElementById('inv-note').value=inv?inv.note||'':'';
+  document.getElementById('inv-form-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('inv-name').focus(),50);
+}
+function closeInvForm(){document.getElementById('inv-form-overlay').classList.add('hidden');editingInvId=null;}
+
+function saveInvestment(){
+  const name=document.getElementById('inv-name').value.trim();
+  const type=document.getElementById('inv-type').value;
+  const note=document.getElementById('inv-note').value.trim();
+  if(!name){alert('Informe o nome do investimento');return;}
+  if(editingInvId){
+    const inv=investments.find(i=>String(i.id)===String(editingInvId));
+    if(inv){inv.name=name;inv.type=type;inv.note=note||undefined;}
+  } else {
+    investments.push({id:'inv'+Date.now(),name,type,note:note||undefined,operations:[]});
+  }
+  markUnsaved();closeInvForm();renderInvestments();
+}
+
+function deleteInvestment(id){
+  const inv=investments.find(i=>String(i.id)===String(id));
+  if(!inv) return;
+  const ops=(inv.operations||[]).length;
+  const msg=ops?`Excluir "${inv.name}"?\n\n${ops} operação${ops>1?'ões':''} será${ops>1?'ão':''} removida${ops>1?'s':''}.`:`Excluir "${inv.name}"?`;
+  if(!confirm(msg)) return;
+  investments=investments.filter(i=>String(i.id)!==String(id));
+  markUnsaved();renderInvestments();
+}
+
+function openInvOp(invId,type){
+  invOpTargetId=invId;invOpType=type;
+  const inv=investments.find(i=>String(i.id)===String(invId));
+  document.getElementById('inv-op-title').textContent=type==='apply'?`Aplicação — ${inv.name}`:`Resgate — ${inv.name}`;
+  document.getElementById('inv-op-amount').value='';
+  document.getElementById('inv-op-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('inv-op-desc').value='';
+  const saveBtn=document.getElementById('inv-op-save-btn');
+  saveBtn.textContent=type==='apply'?'Aplicar':'Resgatar';
+  saveBtn.style.background=type==='apply'?'var(--green)':'var(--amber)';
+  saveBtn.style.color=type==='apply'?'#0d2820':'#261d08';
+  document.getElementById('inv-op-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('inv-op-amount').focus(),50);
+}
+function closeInvOp(){document.getElementById('inv-op-overlay').classList.add('hidden');invOpTargetId=null;invOpType=null;}
+
+function saveInvOperation(){
+  const amount=parseFloat(document.getElementById('inv-op-amount').value);
+  const date=document.getElementById('inv-op-date').value;
+  const desc=document.getElementById('inv-op-desc').value.trim();
+  if(!amount||amount<=0){alert('Informe um valor válido');return;}
+  if(!date){alert('Informe a data');return;}
+  const inv=investments.find(i=>String(i.id)===String(invOpTargetId));
+  if(!inv) return;
+  if(invOpType==='redeem'){
+    const balance=getInvBalance(inv);
+    if(amount>balance){alert(`Saldo insuficiente. Saldo atual: ${fmt(balance)}`);return;}
+  }
+  if(!inv.operations) inv.operations=[];
+  inv.operations.push({id:'op'+Date.now(),type:invOpType,amount,date,desc:desc||undefined});
+  markUnsaved();closeInvOp();renderInvestments();
+}
+
+function openInvDetail(invId){
+  const inv=investments.find(i=>String(i.id)===String(invId));
+  if(!inv) return;
+  const t=INV_TYPES[inv.type]||INV_TYPES.outro;
+  const ops=(inv.operations||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const balance=getInvBalance(inv);
+
+  document.getElementById('inv-detail-title').textContent=`${t.icon} ${inv.name}`;
+  let running=0;
+  const opsAsc=(inv.operations||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const balanceMap={};
+  opsAsc.forEach(op=>{running+=(op.type==='apply'?op.amount:-op.amount);balanceMap[op.id]=running;});
+
+  document.getElementById('inv-detail-content').innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Saldo atual</div><div class="card-value" style="font-size:18px;color:var(--accent)">${fmt(balance)}</div></div>
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Aplicado</div><div class="card-value" style="font-size:18px;color:var(--green)">${fmt(getInvTotalApplied(inv))}</div></div>
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Resgatado</div><div class="card-value" style="font-size:18px;color:var(--amber)">${fmt(getInvTotalRedeemed(inv))}</div></div>
+    </div>
+    <div style="font-family:var(--font-heading);font-size:14px;font-weight:700;margin-bottom:10px">Histórico de operações</div>
+    ${ops.length?`<div style="max-height:350px;overflow-y:auto">${ops.map(op=>`
+      <div class="inv-tx" style="padding:10px 0">
+        <div class="inv-tx-icon" style="background:${op.type==='apply'?'var(--greenbg)':'var(--amberbg)'}; font-size:14px">${op.type==='apply'?'↑':'↓'}</div>
+        <div class="inv-tx-info">
+          <div class="inv-tx-desc">${escHtml(op.desc||(op.type==='apply'?'Aplicação':'Resgate'))}</div>
+          <div class="inv-tx-date">${op.date.slice(8,10)}/${op.date.slice(5,7)}/${op.date.slice(0,4)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="inv-tx-amount" style="color:${op.type==='apply'?'var(--green)':'var(--amber)'}">${op.type==='apply'?'+':'-'}${fmt(op.amount)}</div>
+          <div style="font-size:11px;color:var(--text3)">Saldo: ${fmt(balanceMap[op.id]||0)}</div>
+        </div>
+        <button class="tx-del" style="opacity:1" onclick="deleteInvOp('${invId}','${op.id}')">✕</button>
+      </div>`).join('')}</div>`:'<div class="empty"><div class="empty-icon" style="font-size:24px">📭</div><div>Nenhuma operação registrada</div></div>'}
+  `;
+  document.getElementById('inv-detail-overlay').classList.remove('hidden');
+}
+function closeInvDetail(){document.getElementById('inv-detail-overlay').classList.add('hidden');}
+
+function deleteInvOp(invId,opId){
+  const inv=investments.find(i=>String(i.id)===String(invId));
+  if(!inv) return;
+  if(!confirm('Excluir esta operação?')) return;
+  inv.operations=(inv.operations||[]).filter(op=>String(op.id)!==String(opId));
+  markUnsaved();
+  openInvDetail(invId);
+  renderInvestments();
+}
+
 // Event delegation — transaction list
 document.getElementById('tx-list').addEventListener('click',function(e){
   const delBtn=e.target.closest('[data-del]');
@@ -1449,7 +1724,10 @@ document.getElementById('unlock-modal').addEventListener('click',function(e){if(
 document.getElementById('delete-modal').addEventListener('click',function(e){if(e.target===this)closeDeleteModal();});
 document.getElementById('budget-modal').addEventListener('click',function(e){if(e.target===this)closeBudgetModal();});
 document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeForm();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();}});
+document.getElementById('inv-form-overlay').addEventListener('click',function(e){if(e.target===this)closeInvForm();});
+document.getElementById('inv-op-overlay').addEventListener('click',function(e){if(e.target===this)closeInvOp();});
+document.getElementById('inv-detail-overlay').addEventListener('click',function(e){if(e.target===this)closeInvDetail();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
 // Update hint when amount changes
@@ -1560,6 +1838,7 @@ function printExtrato(){
     responsibles=data.responsibles||[];
     paidMonths=data.paidMonths||[];
     budgets=data.budgets||{};
+    investments=data.investments||[];
     const btn=document.getElementById('btn-continue');
     const divider=document.getElementById('div-or-import');
     if(btn){btn.style.display='flex';}

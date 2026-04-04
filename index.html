@@ -214,6 +214,49 @@ canvas{display:block}
 .btn-save{flex:2;background:var(--accent);border:none;border-radius:10px;padding:11px;cursor:pointer;font-size:14px;font-family:var(--font-body);font-weight:600;color:#fff}
 .btn-save:hover{background:var(--accent2)}
 
+/* ── SEARCH/FILTER/SORT BAR ── */
+.tx-toolbar{display:flex;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center}
+.tx-search{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px 7px 30px;color:var(--text);font-size:13px;font-family:var(--font-body);outline:none;transition:border-color .15s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235a5870' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:9px center}
+.tx-search:focus{border-color:var(--accent)}
+.tx-search::placeholder{color:var(--text3)}
+.tx-filter{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text2);font-size:12px;font-family:var(--font-body);outline:none;cursor:pointer;transition:border-color .15s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235a5870' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px}
+.tx-filter:focus{border-color:var(--accent)}
+.tx-sort-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.tx-sort-btn:hover,.tx-sort-btn.active{border-color:var(--accent);color:var(--accent)}
+
+/* ── DELETE CONFIRMATION MODAL ── */
+.modal-confirm-delete{flex:2;background:var(--red);border:none;border-radius:10px;padding:11px;cursor:pointer;font-size:14px;font-family:var(--font-body);font-weight:700;color:#fff}
+.modal-confirm-delete:hover{filter:brightness(1.1)}
+
+/* ── NOTES ── */
+.tx-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+
+/* ── BUDGET ── */
+.budget-item{padding:8px 18px}
+.budget-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.budget-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.budget-info{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-top:3px}
+.budget-edit{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 4px;transition:color .15s}
+.budget-edit:hover{color:var(--accent)}
+
+/* ── ANNUAL SUMMARY ── */
+.annual-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:14px}
+.annual-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.annual-title{font-family:var(--font-heading);font-size:16px;font-weight:700;margin-bottom:12px}
+.annual-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.annual-label{color:var(--text3)}
+.annual-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.annual-table th{text-align:left;color:var(--text3);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border)}
+.annual-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.annual-table tr:last-child td{border-bottom:none}
+.annual-table tr:hover td{background:var(--surface2)}
+
+/* ── INSTALLMENT ALERTS ── */
+.alert-banner{background:var(--amberbg);border:1px solid #3d2e00;border-radius:12px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--amber)}
+.alert-banner-icon{font-size:18px;flex-shrink:0}
+.alert-banner-text{flex:1}
+.alert-banner-count{font-family:var(--font-heading);font-weight:700;font-size:15px}
+
 @media(max-width:640px){
   body{-webkit-text-size-adjust:100%}
   .app{padding:0 12px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
@@ -242,6 +285,9 @@ canvas{display:block}
   .recur-grid{padding:10px}
   .people-grid{grid-template-columns:1fr}
   .history-grid{padding-bottom:16px}
+  .tx-toolbar{padding:8px 12px}
+  .tx-search{min-width:100%}
+  .annual-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -290,6 +336,7 @@ canvas{display:block}
       <button class="tab" onclick="showPage('recurring',this)">Recorrentes</button>
       <button class="tab" onclick="showPage('charts',this)">Gráficos</button>
       <button class="tab" onclick="showPage('people',this)">Responsáveis</button>
+      <button class="tab" onclick="showPage('annual',this)">Resumo Anual</button>
       <button class="tab" onclick="showPage('history',this)">Histórico</button>
     </div>
     <div class="header-right">
@@ -318,6 +365,7 @@ canvas{display:block}
       </div>
     </div>
     <div id="lock-banner-area"></div>
+    <div id="installment-alert-area"></div>
     <div class="summary">
       <div class="card"><div class="card-label">Receitas</div><div class="card-value" style="color:var(--green)" id="total-income">R$ 0</div><div class="card-sub" id="income-count"></div></div>
       <div class="card"><div class="card-label">Despesas</div><div class="card-value" style="color:var(--red)" id="total-expense">R$ 0</div><div class="card-sub" id="expense-count"></div></div>
@@ -332,12 +380,23 @@ canvas{display:block}
             <button class="add-btn" id="add-tx-btn" onclick="openForm()">+ Adicionar</button>
           </div>
         </div>
+        <div class="tx-toolbar">
+          <input class="tx-search" id="tx-search" type="text" placeholder="Buscar transação..." oninput="render()"/>
+          <select class="tx-filter" id="tx-filter-type" onchange="render()"><option value="">Todos tipos</option><option value="expense">Despesas</option><option value="income">Receitas</option></select>
+          <select class="tx-filter" id="tx-filter-cat" onchange="render()"><option value="">Todas categorias</option></select>
+          <select class="tx-filter" id="tx-filter-resp" onchange="render()"><option value="">Todos responsáveis</option></select>
+          <select class="tx-filter" id="tx-sort" onchange="render()"><option value="date-desc">Data ↓</option><option value="date-asc">Data ↑</option><option value="amount-desc">Valor ↓</option><option value="amount-asc">Valor ↑</option><option value="cat">Categoria</option></select>
+        </div>
         <div class="tx-list" id="tx-list"></div>
       </div>
       <div class="sidebar">
         <div class="panel">
           <div class="side-section-title">Por categoria</div>
           <div id="cat-list" style="padding-bottom:8px"></div>
+        </div>
+        <div class="panel">
+          <div class="side-section-title">Orçamento por categoria</div>
+          <div id="budget-list" style="padding-bottom:8px"></div>
         </div>
         <div class="panel">
           <div class="side-section-title">Por responsável</div>
@@ -384,6 +443,24 @@ canvas{display:block}
     </div>
   </div>
 
+  <!-- ANNUAL SUMMARY -->
+  <div class="page" id="page-annual">
+    <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Resumo Anual</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Visão consolidada do ano</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="month-btn" onclick="changeAnnualYear(-1)">‹</button>
+        <span class="month-label" id="annual-year-label"></span>
+        <button class="month-btn" onclick="changeAnnualYear(1)">›</button>
+      </div>
+    </div>
+    <div id="annual-summary-cards" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-header"><div class="panel-title">Mês a mês</div></div>
+      <div style="overflow-x:auto"><table class="annual-table" id="annual-table"></table></div>
+    </div>
+    <div class="annual-grid" id="annual-cat-grid"></div>
+  </div>
+
   <!-- HISTORY -->
   <div class="page" id="page-history">
     <div style="padding:16px 0 14px"><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Histórico de meses</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Meses fechados ficam bloqueados para edição</div></div>
@@ -417,6 +494,27 @@ canvas{display:block}
   </div>
 </div>
 
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="delete-modal">
+  <div class="modal-card">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title">Excluir transação?</div>
+    <div class="modal-sub" id="delete-modal-sub">Tem certeza que deseja excluir esta transação?</div>
+    <div class="modal-actions"><button class="modal-cancel" onclick="closeDeleteModal()">Cancelar</button><button class="modal-confirm-delete" onclick="confirmDelete()">Excluir</button></div>
+  </div>
+</div>
+
+<!-- BUDGET MODAL -->
+<div class="modal-overlay hidden" id="budget-modal">
+  <div class="modal-card" style="text-align:left">
+    <div class="modal-title" style="text-align:center">Definir orçamento</div>
+    <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="budget-cat-select" onchange="budgetEditCat=this.value;document.getElementById('budget-amount').value=budgets[this.value]||''"></select></div>
+    <div class="form-group"><label class="form-label">Limite mensal (R$)</label><input class="form-input" id="budget-amount" type="number" placeholder="0,00" min="0" step="0.01"/></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Deixe vazio ou 0 para remover o orçamento</div>
+    <div class="modal-actions"><button class="modal-cancel" onclick="closeBudgetModal()">Cancelar</button><button class="btn-save" style="flex:2" onclick="saveBudget()">Salvar</button></div>
+  </div>
+</div>
+
 <!-- FORM OVERLAY -->
 <div class="overlay hidden" id="overlay">
   <div class="form-card">
@@ -429,6 +527,8 @@ canvas{display:block}
     </div>
     <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="f-category"><option value="alimentação">🍽 Alimentação</option><option value="mercado">🛒 Mercado</option><option value="transporte">🚗 Transporte</option><option value="moradia">🏠 Moradia</option><option value="saúde">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educação">📚 Educação</option><option value="salário">💼 Salário</option><option value="outros">📦 Outros</option></select></div>
     <div class="form-group" id="f-resp-group"><label class="form-label">Responsável</label><div class="resp-selector" id="f-resp-selector"></div></div>
+
+    <div class="form-group" id="f-note-group"><label class="form-label">Observação (opcional)</label><input class="form-input" id="f-note" placeholder="Ex: Compra no cartão Nubank"/></div>
 
     <!-- RECORRÊNCIA / PARCELAMENTO -->
     <div class="form-group" id="f-recur-group">
@@ -466,12 +566,14 @@ let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
 let recurType='none'; // 'none' | 'infinite' | 'installment'
 let currentFileName='montra.json';
-let transactions=[], recurring=[], responsibles=[], paidMonths=[];
+let transactions=[], recurring=[], responsibles=[], paidMonths=[], budgets={};
 let charts={};
+let pendingDeleteId=null;
+let annualYear=new Date().getFullYear();
 
 const LS_KEY='montra_data';
 function saveToLS(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths}));}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets}));}catch(e){}
 }
 
 function buildFileName(){
@@ -501,6 +603,7 @@ function loadFromFile(e){
       recurring=data.recurring||[];
       responsibles=data.responsibles||[];
       paidMonths=data.paidMonths||[];
+      budgets=data.budgets||{};
       currentFileName=file.name;
       saveToLS();
       startApp(file.name);
@@ -511,7 +614,7 @@ function loadFromFile(e){
 }
 
 function createNew(){
-  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[];
+  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[]; budgets={};
   currentFileName='montra.json';
   startApp('novo arquivo');
 }
@@ -537,7 +640,7 @@ function closeSession(){
 
 // ── SAVE TO FILE ──
 function saveToFile(){
-  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths};
+  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -661,11 +764,51 @@ function render(){
   document.getElementById('balance-label').textContent=balance>=0?'saldo positivo ↑':'saldo negativo ↓';
   document.getElementById('total-balance').style.color=balance>=0?'var(--green)':'var(--red)';
 
+  // Populate filter dropdowns
+  const catSelect=document.getElementById('tx-filter-cat');
+  const currentCatVal=catSelect.value;
+  catSelect.innerHTML='<option value="">Todas categorias</option>'+Object.keys(CAT_ICONS).map(c=>`<option value="${c}"${c===currentCatVal?' selected':''}>${CAT_ICONS[c]} ${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
+  const respSelect=document.getElementById('tx-filter-resp');
+  const currentRespVal=respSelect.value;
+  respSelect.innerHTML='<option value="">Todos responsáveis</option>'+responsibles.map(r=>`<option value="${r.id}"${r.id===currentRespVal?' selected':''}>${r.name}</option>`).join('');
+
+  // Apply search, filters, sort
+  const searchTerm=(document.getElementById('tx-search').value||'').toLowerCase();
+  const filterType=document.getElementById('tx-filter-type').value;
+  const filterCat=catSelect.value;
+  const filterResp=respSelect.value;
+  const sortMode=document.getElementById('tx-sort').value;
+
+  let filtered=txs.filter(t=>{
+    if(searchTerm&&!t.desc.toLowerCase().includes(searchTerm)&&!(t.note&&t.note.toLowerCase().includes(searchTerm))) return false;
+    if(filterType&&t.type!==filterType) return false;
+    if(filterCat&&t.category!==filterCat) return false;
+    if(filterResp&&t.respId!==filterResp) return false;
+    return true;
+  });
+
+  if(sortMode==='date-asc') filtered.sort((a,b)=>a.date.localeCompare(b.date));
+  else if(sortMode==='date-desc') filtered.sort((a,b)=>b.date.localeCompare(a.date));
+  else if(sortMode==='amount-desc') filtered.sort((a,b)=>b.amount-a.amount);
+  else if(sortMode==='amount-asc') filtered.sort((a,b)=>a.amount-b.amount);
+  else if(sortMode==='cat') filtered.sort((a,b)=>a.category.localeCompare(b.category));
+
+  // Installment alerts
+  const alertArea=document.getElementById('installment-alert-area');
+  const activeInstalls=recurring.filter(r=>{
+    if(!r.isInstallment) return false;
+    const has=transactions.some(t=>t.recurId===r.id&&t.date.startsWith(`${currentYear}-${String(currentMonth+1).padStart(2,'0')}`));
+    return has&&getInstallmentCount(r.id)<r.totalInstallments;
+  });
+  if(activeInstalls.length&&!paid){
+    alertArea.innerHTML=`<div class="alert-banner"><span class="alert-banner-icon">📋</span><div class="alert-banner-text"><strong>${activeInstalls.length} parcela${activeInstalls.length>1?'s':''}</strong> neste mês: ${activeInstalls.map(r=>`${r.desc} (${fmt(r.amount)})`).join(', ')}</div></div>`;
+  } else { alertArea.innerHTML=''; }
+
   const list=document.getElementById('tx-list');
-  if(!txs.length){
-    list.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div>Nenhuma transação neste mês</div></div>`;
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">${txs.length?'🔍':'📭'}</div><div>${txs.length?'Nenhuma transação encontrada com esses filtros':'Nenhuma transação neste mês'}</div></div>`;
   } else {
-    list.innerHTML=txs.map(t=>{
+    list.innerHTML=filtered.map(t=>{
       const color=getRespColor(t.respId),initials=getRespInitials(t.respId),name=getRespName(t.respId);
       const sid=String(t.id);
 
@@ -673,7 +816,6 @@ function render(){
       let badge='';
       if(t.recurId){
         if(t.installmentNum){
-          // Compute actual installment number by chronological order of all txs for this recurId
           const installTxs=transactions.filter(tx=>tx.recurId===t.recurId).sort((a,b)=>a.date.localeCompare(b.date));
           const actualNum=installTxs.findIndex(tx=>tx.id===t.id)+1;
           badge=`<span class="install-badge">${actualNum}/${t.totalInstallments}</span>`;
@@ -688,6 +830,7 @@ function render(){
         <div class="tx-info">
           <div class="tx-name">${escHtml(t.desc)}${badge}</div>
           <div class="tx-meta"><span style="color:var(--text3)">${t.category}</span>${t.respId?`<span class="resp-chip" style="background:${color}22;color:${color}"><span style="width:14px;height:14px;border-radius:50%;background:${color};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</span>${name}</span>`:''}</div>
+          ${t.note?`<div class="tx-note">📝 ${escHtml(t.note)}</div>`:''}
         </div>
         <div class="tx-date">${t.date.slice(8,10)}/${t.date.slice(5,7)}</div>
         <div class="tx-amount ${t.type==='income'?'pos':'neg'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
@@ -703,6 +846,35 @@ function render(){
     const pct=totalExp>0?Math.round(amt/totalExp*100):0;
     return `<div class="cat-item"><div class="cat-dot" style="background:${CAT_COLORS[cat]||'#94a3b8'}"></div><div class="cat-name">${CAT_ICONS[cat]||'📦'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</div><div class="cat-amount" style="color:${CAT_COLORS[cat]||'#94a3b8'};font-size:12px">${fmt(amt)}</div><div class="cat-pct">${pct}%</div></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#94a3b8'}"></div></div>`;
   }).join('')||'<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px">Sem despesas</div>';
+
+  // Budget rendering
+  const budgetList=document.getElementById('budget-list');
+  const allCats=Object.keys(CAT_ICONS);
+  const catsWithBudget=allCats.filter(c=>budgets[c]&&budgets[c]>0);
+  const catsWithout=allCats.filter(c=>!budgets[c]||budgets[c]<=0);
+  if(catsWithBudget.length){
+    budgetList.innerHTML=catsWithBudget.map(cat=>{
+      const limit=budgets[cat];
+      const spent=catTotals[cat]||0;
+      const pctB=Math.min(100,Math.round(spent/limit*100));
+      const over=spent>limit;
+      const barColor=over?'var(--red)':pctB>80?'var(--amber)':'var(--green)';
+      return `<div class="budget-item">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px">${CAT_ICONS[cat]} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>
+          <button class="budget-edit" onclick="openBudgetModal('${cat}')">editar</button>
+        </div>
+        <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${pctB}%;background:${barColor}"></div></div>
+        <div class="budget-info">
+          <span style="color:${over?'var(--red)':'var(--text3)'}">${fmt(spent)} / ${fmt(limit)}</span>
+          <span style="color:${barColor};font-weight:600">${pctB}%</span>
+        </div>
+        ${over?`<div style="font-size:11px;color:var(--red);margin-top:2px">Estourou ${fmt(spent-limit)}</div>`:''}
+      </div>`;
+    }).join('')+(catsWithout.length?`<div style="padding:8px 18px"><button class="budget-edit" onclick="openBudgetModal('${catsWithout[0]}')" style="font-size:12px">+ Definir mais orçamentos</button></div>`:'');
+  } else {
+    budgetList.innerHTML=`<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px">Sem orçamentos definidos<br><button class="budget-edit" onclick="openBudgetModal('alimentação')" style="font-size:12px;margin-top:6px">+ Definir orçamento</button></div>`;
+  }
 
   const respTotals={};expTxs.forEach(t=>{if(t.respId){respTotals[t.respId]=(respTotals[t.respId]||0)+t.amount;}});
   document.getElementById('resp-list').innerHTML=Object.entries(respTotals).sort((a,b)=>b[1]-a[1]).map(([rid,amt])=>{
@@ -744,21 +916,28 @@ function showPage(name,el){
   if(name==='recurring') renderRecurring();
   if(name==='people') renderPeople();
   if(name==='history') renderHistory();
+  if(name==='annual') renderAnnual();
 }
 
 // ── HISTORY ──
 function renderHistory(){
   const grid=document.getElementById('history-grid');
+  // Collect all months that have transactions or are paid
+  const monthSet=new Set();
+  transactions.forEach(t=>{const d=new Date(t.date+'T12:00:00');monthSet.add(d.getFullYear()+'-'+d.getMonth());});
+  paidMonths.forEach(k=>{const p=k.split('-');monthSet.add(parseInt(p[0])+'-'+(parseInt(p[1])-1));});
+  // Also include current viewed month
+  monthSet.add(currentYear+'-'+currentMonth);
   const entries=[];
-  for(let i=0;i<24;i++){
-    let m=currentMonth-i,y=currentYear;
-    if(m<0){m+=12;y--;}
+  monthSet.forEach(key=>{
+    const [y,m]=[parseInt(key.split('-')[0]),parseInt(key.split('-')[1])];
     const txs=getMonthTxs(y,m);
-    if(!txs.length&&!isMonthPaid(y,m)) continue;
+    if(!txs.length&&!isMonthPaid(y,m)) return;
     const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     entries.push({y,m,inc,exp,bal:inc-exp,paid:isMonthPaid(y,m),txCount:txs.length});
-  }
+  });
+  entries.sort((a,b)=>(b.y*12+b.m)-(a.y*12+a.m));
   if(!entries.length){grid.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div>Nenhum histórico ainda</div></div>';return;}
   grid.innerHTML=entries.map(e=>`
     <div class="hist-card${e.paid?' paid-card':''}" onclick="goToMonth(${e.y},${e.m})">
@@ -1031,6 +1210,8 @@ function openForm(tx,recurMode=false,recurTx=null){
   document.getElementById('f-amount').value=src?src.amount:'';
   document.getElementById('f-date').value=src?src.date:new Date().toISOString().split('T')[0];
   document.getElementById('f-category').value=src?src.category:'alimentação';
+  document.getElementById('f-note').value=src?src.note||'':'';
+  document.getElementById('f-note-group').style.display=recurMode?'none':'block';
 
   // Reset recur type for new transactions
   if(!recurMode&&!isEdit) setRecurType('none');
@@ -1060,6 +1241,7 @@ function saveTransaction(){
   const amount=parseFloat(document.getElementById('f-amount').value);
   const date=document.getElementById('f-date').value;
   const category=document.getElementById('f-category').value;
+  const note=document.getElementById('f-note').value.trim();
 
   if(!desc||!amount){alert('Preencha descrição e valor');return;}
 
@@ -1088,7 +1270,7 @@ function saveTransaction(){
   if(editId){
     // Editing existing transaction — just update fields
     const idx=transactions.findIndex(t=>String(t.id)===String(editId));
-    if(idx>-1) transactions[idx]={...transactions[idx],desc,amount,type:formType,category,date,respId:selectedResp};
+    if(idx>-1) transactions[idx]={...transactions[idx],desc,amount,type:formType,category,date,respId:selectedResp,note:note||undefined};
   } else {
     // New transaction
     if(recurType==='installment'){
@@ -1116,9 +1298,9 @@ function saveTransaction(){
     } else if(recurType==='infinite'){
       const nr={id:'rec'+Date.now(),desc,amount,type:formType,category,respId:selectedResp,isInstallment:false};
       recurring.push(nr);
-      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,recurId:nr.id,respId:selectedResp});
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,recurId:nr.id,respId:selectedResp,note:note||undefined});
     } else {
-      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,respId:selectedResp});
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,respId:selectedResp,note:note||undefined});
     }
   }
 
@@ -1131,8 +1313,19 @@ function findRecur(id){return recurring.find(r=>String(r.id)===String(id));}
 
 function deleteTx(id){
   if(isCurrentPaid())return;
-  transactions=transactions.filter(t=>String(t.id)!==String(id));
-  markUnsaved();render();
+  const tx=findTx(id);
+  if(!tx) return;
+  pendingDeleteId=id;
+  document.getElementById('delete-modal-sub').innerHTML=`<strong>"${escHtml(tx.desc)}"</strong><br>${tx.type==='income'?'+':'-'}${fmt(tx.amount)} · ${tx.date.slice(8,10)}/${tx.date.slice(5,7)}/${tx.date.slice(0,4)}`;
+  document.getElementById('delete-modal').classList.remove('hidden');
+}
+function closeDeleteModal(){document.getElementById('delete-modal').classList.add('hidden');pendingDeleteId=null;}
+function confirmDelete(){
+  if(pendingDeleteId){
+    transactions=transactions.filter(t=>String(t.id)!==String(pendingDeleteId));
+    markUnsaved();render();
+  }
+  closeDeleteModal();
 }
 function editTx(id){
   if(isCurrentPaid())return;
@@ -1154,6 +1347,89 @@ function editRecur(id){
   if(r)openForm(null,true,r);
 }
 
+// ── BUDGET ──
+let budgetEditCat=null;
+function openBudgetModal(cat){
+  budgetEditCat=cat;
+  const sel=document.getElementById('budget-cat-select');
+  sel.innerHTML=Object.keys(CAT_ICONS).map(c=>`<option value="${c}"${c===cat?' selected':''}>${CAT_ICONS[c]} ${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
+  document.getElementById('budget-amount').value=budgets[cat]||'';
+  document.getElementById('budget-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('budget-amount').focus(),50);
+}
+function closeBudgetModal(){document.getElementById('budget-modal').classList.add('hidden');budgetEditCat=null;}
+function saveBudget(){
+  const val=parseFloat(document.getElementById('budget-amount').value);
+  if(budgetEditCat){
+    if(val>0) budgets[budgetEditCat]=val;
+    else delete budgets[budgetEditCat];
+    markUnsaved();render();
+  }
+  closeBudgetModal();
+}
+
+// ── ANNUAL SUMMARY ──
+function changeAnnualYear(d){annualYear+=d;renderAnnual();}
+function renderAnnual(){
+  document.getElementById('annual-year-label').textContent=annualYear;
+  let yearInc=0,yearExp=0,monthData=[];
+  for(let m=0;m<12;m++){
+    const txs=getMonthTxs(annualYear,m);
+    const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    yearInc+=inc;yearExp+=exp;
+    monthData.push({m,inc,exp,bal:inc-exp,count:txs.length,paid:isMonthPaid(annualYear,m)});
+  }
+  const yearBal=yearInc-yearExp;
+  const activeMonths=monthData.filter(d=>d.count>0).length;
+  const avgInc=activeMonths?yearInc/activeMonths:0;
+  const avgExp=activeMonths?yearExp/activeMonths:0;
+  const bestMonth=monthData.reduce((best,d)=>d.bal>best.bal?d:best,{bal:-Infinity,m:0});
+  const worstMonth=monthData.reduce((worst,d)=>d.bal<worst.bal?d:worst,{bal:Infinity,m:0});
+
+  document.getElementById('annual-summary-cards').innerHTML=`
+    <div class="card" style="flex:1;min-width:150px"><div class="card-label">Receita anual</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(yearInc)}</div><div class="card-sub">Média: ${fmt(avgInc)}/mês</div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-label">Despesa anual</div><div class="card-value" style="color:var(--red);font-size:20px">${fmt(yearExp)}</div><div class="card-sub">Média: ${fmt(avgExp)}/mês</div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-label">Saldo anual</div><div class="card-value" style="color:${yearBal>=0?'var(--green)':'var(--red)'};font-size:20px">${fmt(yearBal)}</div><div class="card-sub">${activeMonths} meses com movimentação</div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-label">Melhor mês</div><div class="card-value" style="color:var(--green);font-size:18px">${bestMonth.bal>-Infinity?MONTHS_SHORT[bestMonth.m]:'—'}</div><div class="card-sub">${bestMonth.bal>-Infinity?fmt(bestMonth.bal):''}</div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-label">Pior mês</div><div class="card-value" style="color:var(--red);font-size:18px">${worstMonth.bal<Infinity?MONTHS_SHORT[worstMonth.m]:'—'}</div><div class="card-sub">${worstMonth.bal<Infinity?fmt(worstMonth.bal):''}</div></div>
+  `;
+
+  document.getElementById('annual-table').innerHTML=`
+    <thead><tr><th>Mês</th><th>Receitas</th><th>Despesas</th><th>Saldo</th><th>Transações</th><th>Status</th></tr></thead>
+    <tbody>${monthData.map(d=>`<tr style="cursor:pointer" onclick="goToMonth(${annualYear},${d.m})">
+      <td style="font-weight:500">${MONTHS_SHORT[d.m]}</td>
+      <td style="color:var(--green);font-family:var(--font-heading)">${d.inc?fmt(d.inc):'—'}</td>
+      <td style="color:var(--red);font-family:var(--font-heading)">${d.exp?fmt(d.exp):'—'}</td>
+      <td style="color:${d.bal>=0?'var(--green)':'var(--red)'};font-family:var(--font-heading);font-weight:600">${d.count?fmt(d.bal):'—'}</td>
+      <td>${d.count||'—'}</td>
+      <td>${d.paid?'<span style="color:var(--green);font-size:11px">✓ Fechado</span>':d.count?'<span style="color:var(--text3);font-size:11px">Aberto</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+    </tr>`).join('')}
+    <tr style="border-top:2px solid var(--border2);font-weight:700">
+      <td>Total</td>
+      <td style="color:var(--green);font-family:var(--font-heading)">${fmt(yearInc)}</td>
+      <td style="color:var(--red);font-family:var(--font-heading)">${fmt(yearExp)}</td>
+      <td style="color:${yearBal>=0?'var(--green)':'var(--red)'};font-family:var(--font-heading)">${fmt(yearBal)}</td>
+      <td>${monthData.reduce((s,d)=>s+d.count,0)}</td>
+      <td></td>
+    </tr></tbody>`;
+
+  // Category breakdown for the year
+  const yearCats={};
+  for(let m=0;m<12;m++){
+    getMonthTxs(annualYear,m).filter(t=>t.type==='expense').forEach(t=>{yearCats[t.category]=(yearCats[t.category]||0)+t.amount;});
+  }
+  const sortedCats=Object.entries(yearCats).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('annual-cat-grid').innerHTML=sortedCats.length?`
+    <div class="panel" style="grid-column:1/-1">
+      <div class="panel-header"><div class="panel-title">Despesas por categoria — ${annualYear}</div></div>
+      <div style="padding:14px">${sortedCats.map(([cat,amt])=>{
+        const pct=yearExp>0?Math.round(amt/yearExp*100):0;
+        return `<div class="cat-item"><div class="cat-dot" style="background:${CAT_COLORS[cat]||'#94a3b8'}"></div><div class="cat-name">${CAT_ICONS[cat]||'📦'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</div><div class="cat-amount" style="color:${CAT_COLORS[cat]||'#94a3b8'};font-size:12px">${fmt(amt)}</div><div class="cat-pct">${pct}%</div></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CAT_COLORS[cat]||'#94a3b8'}"></div></div>`;
+      }).join('')}</div>
+    </div>`:'';
+}
+
 // Event delegation — transaction list
 document.getElementById('tx-list').addEventListener('click',function(e){
   const delBtn=e.target.closest('[data-del]');
@@ -1170,8 +1446,10 @@ document.getElementById('recur-list').addEventListener('click',function(e){
 });
 document.getElementById('pay-modal').addEventListener('click',function(e){if(e.target===this)closePayModal();});
 document.getElementById('unlock-modal').addEventListener('click',function(e){if(e.target===this)closeUnlockModal();});
+document.getElementById('delete-modal').addEventListener('click',function(e){if(e.target===this)closeDeleteModal();});
+document.getElementById('budget-modal').addEventListener('click',function(e){if(e.target===this)closeBudgetModal();});
 document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeForm();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeForm();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
 // Update hint when amount changes
@@ -1281,6 +1559,7 @@ function printExtrato(){
     recurring=data.recurring||[];
     responsibles=data.responsibles||[];
     paidMonths=data.paidMonths||[];
+    budgets=data.budgets||{};
     const btn=document.getElementById('btn-continue');
     const divider=document.getElementById('div-or-import');
     if(btn){btn.style.display='flex';}

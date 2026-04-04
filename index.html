@@ -1789,13 +1789,19 @@ function printExtrato(){
     </tr>`;
   }).join('');
 
+  const logoUrl='https://mdendena2000.github.io/montra/logo.png';
+
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
   <title>Extrato ${monthLabel}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a2e;background:#fff;padding:32px 40px}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a2e;background:#fff;padding:32px 40px;position:relative}
+    .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);opacity:.04;pointer-events:none;z-index:0}
+    .watermark img{width:500px;height:500px;object-fit:contain}
+    .content{position:relative;z-index:1}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1a2e;padding-bottom:16px;margin-bottom:20px}
-    .logo{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+    .logo{font-size:22px;font-weight:800;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}
+    .logo img{width:36px;height:36px;object-fit:contain}
     .header-info{text-align:right;color:#555}
     .header-info .period{font-size:16px;font-weight:700;color:#1a1a2e}
     .status-badge{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;${isPaid?'background:#dcfce7;color:#16a34a;border:1px solid #86efac':'background:#fef9c3;color:#a16207;border:1px solid #fde047'}}
@@ -1813,11 +1819,15 @@ function printExtrato(){
     tr:hover td{background:#fafafa}
     .badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;background:#ede9fe;color:#7c3aed;font-weight:500}
     .empty{text-align:center;padding:40px;color:#aaa}
-    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#aaa}
-    @media print{body{padding:20px 24px}@page{margin:1cm}}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aaa}
+    .footer-logo{display:flex;align-items:center;gap:6px}
+    .footer-logo img{width:16px;height:16px;object-fit:contain;opacity:.5}
+    @media print{body{padding:20px 24px}.watermark{position:fixed}@page{margin:1cm}}
   </style></head><body>
+  <div class="watermark"><img src="${logoUrl}"/></div>
+  <div class="content">
   <div class="header">
-    <div><div class="logo">Montra</div><div style="margin-top:4px;font-size:12px;color:#888">Extrato mensal de transações</div></div>
+    <div><div class="logo"><img src="${logoUrl}"/>Montra</div><div style="margin-top:4px;font-size:12px;color:#888">Extrato mensal de transações</div></div>
     <div class="header-info">
       <div class="period">${monthLabel}</div>
       <div style="font-size:11px;margin-top:2px">Emitido em ${generated}</div>
@@ -1836,8 +1846,9 @@ function printExtrato(){
     <tbody>${rows}</tbody>
   </table>`:'<div class="empty">Nenhuma transação neste mês.</div>'}
   <div class="footer">
-    <span>Montra — gerenciador de finanças pessoais</span>
+    <span class="footer-logo"><img src="${logoUrl}"/> Montra — gerenciador de finanças pessoais</span>
     <span>${txs.length} transação${txs.length!==1?'ões':''} · ${monthLabel}</span>
+  </div>
   </div>
   <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`;

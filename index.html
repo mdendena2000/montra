@@ -565,26 +565,41 @@ function fmt(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,m
 function getCurrentTxs(){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===currentYear&&d.getMonth()===currentMonth;}).sort((a,b)=>b.date.localeCompare(a.date));}
 function getMonthTxs(y,m){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===y&&d.getMonth()===m;});}
 
-// Count how many installments of a recurring have been applied
+// Count how many installments of a recurring have been applied (only closed months)
 function getInstallmentCount(recurId){
   return transactions.filter(t=>t.recurId===recurId).length;
+}
+function getPaidInstallmentCount(recurId){
+  return transactions.filter(t=>{
+    if(t.recurId!==recurId) return false;
+    const d=new Date(t.date+'T12:00:00');
+    return isMonthPaid(d.getFullYear(),d.getMonth());
+  }).length;
 }
 
 function applyRecurrences(){
   if(isCurrentPaid()) return;
-  const key=`ft_applied_${currentYear}_${currentMonth}`;
-  const applied=JSON.parse(sessionStorage.getItem('ft_applied')||'[]');
-  if(applied.includes(key)) return;
   const m=String(currentMonth+1).padStart(2,'0');
+  let changed=false;
   recurring.forEach(r=>{
     const already=transactions.some(t=>t.recurId===r.id&&t.date.startsWith(`${currentYear}-${m}`));
     if(already) return;
 
     if(r.isInstallment){
-      // Count total applied installments across all months
-      const appliedCount=getInstallmentCount(r.id);
-      if(appliedCount>=r.totalInstallments) return; // All done, don't apply
-      const installmentNum=appliedCount+1;
+      // Use stored start month; fallback to first transaction date for legacy data
+      let sYear=r.startYear, sMonth=r.startMonth;
+      if(sYear==null||sMonth==null){
+        const firstTx=transactions.filter(t=>t.recurId===r.id).sort((a,b)=>a.date.localeCompare(b.date))[0];
+        if(!firstTx) return;
+        const d=new Date(firstTx.date+'T12:00:00');
+        sYear=d.getFullYear(); sMonth=d.getMonth();
+        r.startYear=sYear; r.startMonth=sMonth;
+      }
+      // Calculate month offset from start
+      const offset=(currentYear-sYear)*12+(currentMonth-sMonth);
+      if(offset<0) return; // Month is before start
+      if(offset>=r.totalInstallments) return; // All installments already covered
+      const installmentNum=offset+1;
       transactions.push({
         id:'r'+Date.now()+Math.random(),
         desc:r.desc,
@@ -597,7 +612,12 @@ function applyRecurrences(){
         installmentNum,
         totalInstallments:r.totalInstallments
       });
+      changed=true;
     } else {
+      // Infinite recurring — don't apply to months before first transaction
+      const firstTx=transactions.filter(t=>t.recurId===r.id).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      if(!firstTx) return;
+      if(`${currentYear}-${m}`<firstTx.date.slice(0,7)) return;
       transactions.push({
         id:'r'+Date.now()+Math.random(),
         desc:r.desc,
@@ -608,10 +628,10 @@ function applyRecurrences(){
         recurId:r.id,
         respId:r.respId||null
       });
+      changed=true;
     }
   });
-  applied.push(key);
-  sessionStorage.setItem('ft_applied',JSON.stringify(applied));
+  if(changed) saveToLS();
 }
 
 // ── RENDER ──
@@ -653,7 +673,10 @@ function render(){
       let badge='';
       if(t.recurId){
         if(t.installmentNum){
-          badge=`<span class="install-badge">${t.installmentNum}/${t.totalInstallments}</span>`;
+          // Compute actual installment number by chronological order of all txs for this recurId
+          const installTxs=transactions.filter(tx=>tx.recurId===t.recurId).sort((a,b)=>a.date.localeCompare(b.date));
+          const actualNum=installTxs.findIndex(tx=>tx.id===t.id)+1;
+          badge=`<span class="install-badge">${actualNum}/${t.totalInstallments}</span>`;
         } else {
           badge='<span class="recur-badge">↻</span>';
         }
@@ -747,15 +770,15 @@ function renderHistory(){
       <div style="font-size:11px;color:var(--text3);margin-top:6px">${e.txCount} transações</div>
     </div>`).join('');
 }
-function goToMonth(y,m){currentYear=y;currentMonth=m;showPage('transactions',document.querySelector('.tab'));render();}
+function goToMonth(y,m){currentYear=y;currentMonth=m;applyRecurrences();showPage('transactions',document.querySelector('.tab'));render();}
 
 // ── RECURRING + INSTALLMENTS ──
 function renderRecurring(){
   const infiniteExp=recurring.filter(r=>!r.isInstallment&&r.type==='expense').reduce((s,r)=>s+r.amount,0);
   const infiniteInc=recurring.filter(r=>!r.isInstallment&&r.type==='income').reduce((s,r)=>s+r.amount,0);
 
-  // Active installments (not completed)
-  const activeInstallments=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)<r.totalInstallments);
+  // Active installments (not yet liquidated)
+  const activeInstallments=recurring.filter(r=>r.isInstallment&&!isInstallmentLiquidated(r));
   const installmentMonthly=activeInstallments.reduce((s,r)=>s+(r.type==='expense'?r.amount:-r.amount),0);
 
   document.getElementById('recur-summary').innerHTML=`
@@ -767,10 +790,19 @@ function renderRecurring(){
   const rl=document.getElementById('recur-list');
   if(!recurring.length){rl.innerHTML='<div class="empty"><div class="empty-icon">🔄</div><div>Nenhuma transação recorrente ou parcelamento</div></div>';return;}
 
-  // Separate: infinite recurring first, then installments (active first, completed last)
+  // A parcelamento is "liquidated" only when all installments are in closed months
+  function isInstallmentLiquidated(r){
+    if(getInstallmentCount(r.id)<r.totalInstallments) return false;
+    return transactions.filter(t=>t.recurId===r.id).every(t=>{
+      const d=new Date(t.date+'T12:00:00');
+      return isMonthPaid(d.getFullYear(),d.getMonth());
+    });
+  }
+
+  // Separate: infinite recurring first, then installments (active first, liquidated last)
   const infinites=recurring.filter(r=>!r.isInstallment);
-  const installmentsActive=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)<r.totalInstallments);
-  const installmentsDone=recurring.filter(r=>r.isInstallment&&getInstallmentCount(r.id)>=r.totalInstallments);
+  const installmentsActive=recurring.filter(r=>r.isInstallment&&!isInstallmentLiquidated(r));
+  const installmentsDone=recurring.filter(r=>r.isInstallment&&isInstallmentLiquidated(r));
   const ordered=[...infinites,...installmentsActive,...installmentsDone];
 
   rl.innerHTML=`<div class="recur-grid">${ordered.map(r=>{
@@ -778,11 +810,11 @@ function renderRecurring(){
     const sid=String(r.id);
 
     if(r.isInstallment){
-      const appliedCount=getInstallmentCount(r.id);
-      const completed=appliedCount>=r.totalInstallments;
-      const pct=Math.min(100,Math.round(appliedCount/r.totalInstallments*100));
-      const remaining=r.totalInstallments-appliedCount;
-      const totalPaid=appliedCount*r.amount;
+      const paidCount=getPaidInstallmentCount(r.id);
+      const completed=isInstallmentLiquidated(r);
+      const pct=Math.min(100,Math.round(paidCount/r.totalInstallments*100));
+      const remaining=r.totalInstallments-paidCount;
+      const totalPaid=paidCount*r.amount;
       const totalRemaining=remaining*r.amount;
 
       return `<div class="recur-card${completed?' completed-card':''}">
@@ -802,14 +834,14 @@ function renderRecurring(){
             <div class="install-progress-fill" style="width:${pct}%;background:${completed?'var(--green)':'var(--accent)'}"></div>
           </div>
           <div class="install-progress-label">
-            <span>${appliedCount} de ${r.totalInstallments} parcelas</span>
+            <span>${paidCount} de ${r.totalInstallments} parcelas</span>
             <span>${pct}%</span>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px;display:flex;justify-content:space-between">
             <span>Pago: ${fmt(totalPaid)}</span>
             ${!completed?`<span>Restante: ${fmt(totalRemaining)}</span>`:''}
           </div>
-          ${!completed?`<div style="font-size:11px;color:var(--amber);margin-top:3px">↓ Próxima: ${appliedCount+1}ª parcela</div>`:''}
+          ${!completed?`<div style="font-size:11px;color:var(--amber);margin-top:3px">↓ Próxima: ${paidCount+1}ª parcela</div>`:''}
         </div>
         <div class="recur-actions">
           ${!completed?`<button class="recur-btn" data-edit-recur="${sid}">Editar</button>`:''}
@@ -1066,13 +1098,17 @@ function saveTransaction(){
         id:'rec'+Date.now(),
         desc,amount,type:formType,category,respId:selectedResp,
         isInstallment:true,
-        totalInstallments:totalParcelas
+        totalInstallments:totalParcelas,
+        startYear:currentYear,
+        startMonth:currentMonth
       };
       recurring.push(nr);
-      // First installment in current month
+      // First installment in current viewed month
+      const startM=String(currentMonth+1).padStart(2,'0');
       transactions.push({
         id:'tx'+Date.now(),
-        desc,amount,type:formType,category,date,
+        desc,amount,type:formType,category,
+        date:`${currentYear}-${startM}-01`,
         recurId:nr.id,respId:selectedResp,
         installmentNum:1,
         totalInstallments:totalParcelas

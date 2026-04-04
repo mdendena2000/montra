@@ -109,6 +109,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tx-date{font-size:12px;color:var(--text3);white-space:nowrap}
 .tx-amount{font-family:var(--font-heading);font-size:15px;font-weight:700;white-space:nowrap}
 .tx-amount.pos{color:var(--green)}.tx-amount.neg{color:var(--red)}
+.tx-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0}
+.tx-check:hover{border-color:var(--green)}
+.tx-check.checked{background:var(--green);border-color:var(--green)}
+.tx-check.checked::after{content:'✓';color:#0d2820;font-size:12px;font-weight:700;line-height:1}
+.tx-item.tx-checked .tx-name,.tx-item.tx-checked .tx-amount,.tx-item.tx-checked .tx-date{opacity:.5;text-decoration:line-through;text-decoration-color:var(--text3)}
+.tx-item.tx-checked .tx-meta,.tx-item.tx-checked .tx-note,.tx-item.tx-checked .tx-icon{opacity:.5}
 .tx-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:4px;border-radius:4px;opacity:0;transition:opacity .15s;margin-left:4px;flex-shrink:0}
 .tx-item:not(.locked):hover .tx-del{opacity:1}
 .tx-del:hover{color:var(--red)}
@@ -917,8 +923,8 @@ function render(){
         }
       }
 
-      return `<div class="tx-item${paid?' locked':''}" data-txid="${sid}">
-        ${paid?'<div class="tx-paid-dot"></div>':''}
+      return `<div class="tx-item${paid?' locked':''}${t.paid?' tx-checked':''}" data-txid="${sid}">
+        ${paid?'<div class="tx-paid-dot"></div>':`<button class="tx-check${t.paid?' checked':''}" data-check="${sid}" title="${t.paid?'Desmarcar':'Marcar como pago'}"></button>`}
         <div class="tx-icon" style="background:${CAT_COLORS[t.category]||'#94a3b8'}22">${CAT_ICONS[t.category]||'📦'}</div>
         <div class="tx-info">
           <div class="tx-name">${escHtml(t.desc)}${badge}</div>
@@ -1405,6 +1411,11 @@ function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function findTx(id){return transactions.find(t=>String(t.id)===String(id));}
 function findRecur(id){return recurring.find(r=>String(r.id)===String(id));}
 
+function toggleTxPaid(id){
+  const tx=findTx(id);
+  if(tx){tx.paid=!tx.paid;markUnsaved();render();}
+}
+
 function deleteTx(id){
   if(isCurrentPaid())return;
   const tx=findTx(id);
@@ -1714,6 +1725,8 @@ function deleteInvOp(invId,opId){
 
 // Event delegation — transaction list
 document.getElementById('tx-list').addEventListener('click',function(e){
+  const checkBtn=e.target.closest('[data-check]');
+  if(checkBtn){e.stopPropagation();toggleTxPaid(checkBtn.dataset.check);return;}
   const delBtn=e.target.closest('[data-del]');
   if(delBtn){e.stopPropagation();deleteTx(delBtn.dataset.del);return;}
   const row=e.target.closest('.tx-item:not(.locked)');

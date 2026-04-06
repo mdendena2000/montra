@@ -1444,9 +1444,23 @@ function saveTransaction(){
       if(newTotal<applied){alert(`Já foram lançadas ${applied} parcelas. O total não pode ser menor que isso.`);return;}
       obj.totalInstallments=newTotal;
     }
-    if(editingRecurId){const idx=recurring.findIndex(r=>String(r.id)===String(editingRecurId));if(idx>-1)recurring[idx]=obj;}
-    else recurring.push(obj);
-    markUnsaved();closeForm();renderRecurring();return;
+    if(editingRecurId){
+      const idx=recurring.findIndex(r=>String(r.id)===String(editingRecurId));
+      if(idx>-1) recurring[idx]=obj;
+      // Propagar alterações para transações em meses abertos
+      transactions.forEach(t=>{
+        if(t.recurId!==editingRecurId) return;
+        const d=new Date(t.date+'T12:00:00');
+        if(isMonthPaid(d.getFullYear(),d.getMonth())) return;
+        t.desc=obj.desc;
+        t.amount=obj.amount;
+        t.type=obj.type;
+        t.category=obj.category;
+        t.respId=obj.respId;
+        if(obj.isInstallment) t.totalInstallments=obj.totalInstallments;
+      });
+    } else recurring.push(obj);
+    markUnsaved();closeForm();renderRecurring();render();return;
   }
 
   if(!date){alert('Informe a data');return;}

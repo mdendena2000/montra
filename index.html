@@ -67,6 +67,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .bottom-nav-btn.active{color:var(--accent)}
 .bottom-nav-btn.active .bnav-icon{filter:drop-shadow(0 0 6px rgba(124,111,247,.5))}
 #app-screen .app{padding-bottom:70px}
+/* ── OFX IMPORT ── */
+.ofx-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;transition:background .1s}
+.ofx-item:last-child{border-bottom:none}
+.ofx-item:hover{background:var(--surface2)}
+.ofx-item input[type="checkbox"]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0}
+.ofx-item-info{flex:1;min-width:0}
+.ofx-item-desc{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ofx-item-date{font-size:11px;color:var(--text3)}
+.ofx-item-amount{font-family:var(--font-heading);font-size:14px;font-weight:600;white-space:nowrap;margin:0 8px}
+.ofx-item-cat{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;font-family:var(--font-body);color:var(--text2);outline:none;cursor:pointer;max-width:130px}
+.ofx-item-cat:focus{border-color:var(--accent)}
+.ofx-dup{opacity:.4;text-decoration:line-through}
+.ofx-dup-badge{font-size:10px;background:var(--amberbg);color:var(--amber);border-radius:4px;padding:1px 6px;font-weight:500;margin-left:6px}
 .more-menu-item{display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--font-body);font-weight:500;cursor:pointer;transition:all .15s;margin-bottom:8px}
 .more-menu-item:last-child{margin-bottom:0}
 .more-menu-item:hover{border-color:var(--accent);color:var(--accent)}
@@ -433,6 +446,7 @@ canvas{display:block}
         <div class="panel-header">
           <div class="panel-title">Transações</div>
           <div style="display:flex;gap:8px">
+            <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="triggerOfxInput()">📥 Importar OFX</button>
             <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="printExtrato()">📄 Extrato PDF</button>
             <button class="add-btn" id="add-tx-btn" onclick="openForm()">+ Adicionar</button>
           </div>
@@ -553,6 +567,30 @@ canvas{display:block}
     <button class="more-menu-item" onclick="showPage('history',null);closeMoreMenu()"><span>📋</span> Histórico</button>
   </div>
 </div>
+</div>
+
+<!-- OFX FILE INPUT -->
+<input type="file" id="ofx-input" accept=".ofx,.OFX" style="display:none" onchange="handleOfxFile(event)"/>
+
+<!-- OFX IMPORT MODAL -->
+<div class="overlay hidden" id="ofx-overlay">
+  <div class="form-card" style="width:600px;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="form-title" style="margin-bottom:0">📥 Importar extrato OFX</div>
+      <button class="btn-cancel" onclick="closeOfxImport()" style="padding:6px 12px;flex:none">✕</button>
+    </div>
+    <div id="ofx-summary" style="margin-bottom:12px"></div>
+    <div id="ofx-toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ofx-select-all" checked onchange="toggleOfxSelectAll()" style="accent-color:var(--accent);width:15px;height:15px"/> Selecionar todas</label>
+      <div style="flex:1"></div>
+      <span id="ofx-selected-count" style="font-size:12px;color:var(--text3)"></span>
+    </div>
+    <div id="ofx-list" style="flex:1;overflow-y:auto;min-height:0;margin-bottom:14px"></div>
+    <div class="form-actions" style="margin-top:0">
+      <button class="btn-cancel" onclick="closeOfxImport()">Cancelar</button>
+      <button class="btn-save" id="ofx-import-btn" onclick="confirmOfxImport()">Importar selecionadas</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -1861,13 +1899,239 @@ document.getElementById('overlay').addEventListener('click',function(e){if(e.tar
 document.getElementById('inv-form-overlay').addEventListener('click',function(e){if(e.target===this)closeInvForm();});
 document.getElementById('inv-op-overlay').addEventListener('click',function(e){if(e.target===this)closeInvOp();});
 document.getElementById('inv-detail-overlay').addEventListener('click',function(e){if(e.target===this)closeInvDetail();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();closeMoreMenu();}});
+document.getElementById('ofx-overlay').addEventListener('click',function(e){if(e.target===this)closeOfxImport();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();closeMoreMenu();closeOfxImport();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
 // Init money input formatters
 initMoneyInputs();
 // Update hint when amount changes
 document.getElementById('f-amount').addEventListener('moneychange',()=>{if(recurType==='installment')updateParcelaHint();});
+
+// ── OFX IMPORT ──
+const AUTO_CAT_MAP=[
+  // Transporte
+  {kw:['uber','99 ','lyft','cabify','taxi','táxi','estacionamento','combustivel','combustível','gasolina','etanol','posto','pedagio','pedágio','sem parar'],cat:'transporte'},
+  // Assinaturas
+  {kw:['netflix','spotify','disney','hbo','amazon prime','prime video','youtube','apple music','deezer','globoplay','paramount','star+','crunchyroll','chatgpt','openai','icloud','google one','adobe'],cat:'assinaturas'},
+  // Mercado
+  {kw:['mercado','supermercado','carrefour','pao de acucar','pão de açúcar','extra ','atacadão','atacadao','assai','assaí','big ','maxxi','sams club','costco','hortifruti'],cat:'mercado'},
+  // Alimentação
+  {kw:['ifood','restaurante','lanchonete','pizzaria','padaria','burger','mcdonalds','mcdonald','subway','starbucks','outback','habib','sushi','açaí','acai','sorveteria','cafeteria'],cat:'alimentação'},
+  // Saúde
+  {kw:['farmacia','farmácia','drogaria','drogasil','droga raia','pacheco','hospital','clínica','clinica','laboratorio','laboratório','unimed','amil','sulamerica','hapvida','consulta medica'],cat:'saúde'},
+  // Moradia
+  {kw:['aluguel','condominio','condomínio','iptu','energia','eletricidade','enel','cemig','cpfl','agua','água','sabesp','copasa','gas encanado','gás'],cat:'moradia'},
+  // Educação
+  {kw:['escola','faculdade','universidade','curso','udemy','alura','mensalidade escolar','livro','livraria'],cat:'educação'},
+  // Lazer
+  {kw:['cinema','teatro','show','ingresso','parque','viagem','hotel','airbnb','booking','decolar','latam','gol ','azul ','passagem'],cat:'lazer'},
+  // Beleza
+  {kw:['salão','salao','barbearia','cabelereiro','manicure','estetica','estética','cosmetico','cosmético','perfumaria','boticario','boticário','natura ','avon '],cat:'beleza'},
+  // Contas
+  {kw:['fatura','boleto','conta de luz','conta de agua','conta de água','conta de gas','conta de gás','internet','telefone','celular','claro','vivo','tim ','oi '],cat:'contas'},
+  // Pet
+  {kw:['pet shop','petshop','petz','cobasi','ração','racao'],cat:'pet shop'},
+  {kw:['veterinario','veterinário','vet ','veterin'],cat:'veterinário'},
+  // Compras
+  {kw:['magazine','magalu','americanas','shopee','mercado livre','shein','amazon','aliexpress','casas bahia','renner','riachuelo','c&a','zara','centauro','decathlon','kabum','ponto frio'],cat:'compras'},
+  // Salário / Receitas
+  {kw:['salario','salário','pagamento','remuneração','remuneracao','prolabore','pró-labore'],cat:'salário'},
+  {kw:['rendimento','dividendo','juros','cashback','reembolso','estorno','devolução','devoluçao'],cat:'outras receitas'},
+];
+
+let ofxParsedTxs=[];
+
+function triggerOfxInput(){
+  if(isCurrentPaid()){alert('Este mês está fechado. Reabra para importar.');return;}
+  document.getElementById('ofx-input').click();
+}
+
+function detectOfxEncoding(buffer){
+  // Muitos bancos BR declaram USASCII/1252 no header mas gravam UTF-8.
+  // Estratégia: tentar UTF-8 primeiro (sem erros = é UTF-8 válido).
+  try{
+    const utf8=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
+    // Se decodificou sem erro, é UTF-8
+    return 'utf-8';
+  }catch(e){}
+  // Não é UTF-8 válido — usar header do OFX para decidir
+  const header=new TextDecoder('ascii').decode(buffer.slice(0,1024));
+  const charsetMatch=header.match(/CHARSET:\s*(\S+)/i);
+  const charset=(charsetMatch?charsetMatch[1]:'').toUpperCase();
+  if(charset.includes('8859')) return 'iso-8859-1';
+  // Fallback: windows-1252 (superset de latin1)
+  return 'windows-1252';
+}
+
+function handleOfxFile(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const buffer=ev.target.result;
+      const enc=detectOfxEncoding(buffer);
+      const raw=new TextDecoder(enc).decode(buffer);
+      const txs=parseOfx(raw);
+      if(!txs.length){alert('Nenhuma transação encontrada no arquivo OFX.');return;}
+      showOfxPreview(txs);
+    }catch(err){
+      alert('Erro ao processar o arquivo OFX. Verifique se o formato é válido.');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value='';
+}
+
+function parseOfx(raw){
+  const txs=[];
+  // Encontrar todas as transações (STMTTRN blocks)
+  const regex=/<STMTTRN>([\s\S]*?)(<\/STMTTRN>|(?=<STMTTRN>|<\/BANKTRANLIST))/gi;
+  let match;
+  while((match=regex.exec(raw))!==null){
+    const block=match[1];
+    const get=tag=>{
+      // OFX pode ser SGML (sem fechamento) ou XML (com fechamento)
+      const r=new RegExp('<'+tag+'>\\s*([^<\\r\\n]+)','i');
+      const m=block.match(r);
+      return m?m[1].trim():'';
+    };
+    const trnType=get('TRNTYPE');
+    const dateRaw=get('DTPOSTED');
+    const amountRaw=get('TRNAMT');
+    const memo=get('MEMO')||get('NAME')||'Sem descrição';
+    const fitid=get('FITID');
+    if(!amountRaw||!dateRaw) continue;
+    // Parse date: YYYYMMDD or YYYYMMDDHHMMSS
+    const year=dateRaw.slice(0,4);
+    const month=dateRaw.slice(4,6);
+    const day=dateRaw.slice(6,8);
+    const date=`${year}-${month}-${day}`;
+    // Parse amount (pode ter ponto ou vírgula)
+    const amount=parseFloat(amountRaw.replace(',','.'));
+    if(isNaN(amount)) continue;
+    const isIncome=amount>0;
+    const absAmount=Math.abs(amount);
+    // Auto-categorização
+    const cat=detectCategory(memo,isIncome);
+    // Detecção de duplicata
+    const dup=isDuplicateTx(date,absAmount,memo);
+    txs.push({
+      fitid,date,desc:memo,amount:absAmount,
+      type:isIncome?'income':'expense',
+      category:cat,selected:!dup,isDuplicate:dup
+    });
+  }
+  // Ordenar por data desc
+  txs.sort((a,b)=>b.date.localeCompare(a.date));
+  return txs;
+}
+
+function detectCategory(memo,isIncome){
+  const lower=memo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  for(const rule of AUTO_CAT_MAP){
+    for(const kw of rule.kw){
+      const kwNorm=kw.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      if(lower.includes(kwNorm)) return rule.cat;
+    }
+  }
+  return isIncome?'outras receitas':'outros';
+}
+
+function isDuplicateTx(date,amount,desc){
+  return transactions.some(t=>{
+    if(t.date!==date) return false;
+    if(Math.abs(t.amount-amount)>0.01) return false;
+    // Comparar descrição de forma flexível
+    const a=t.desc.toLowerCase().trim();
+    const b=desc.toLowerCase().trim();
+    if(a===b) return true;
+    if(a.includes(b)||b.includes(a)) return true;
+    return false;
+  });
+}
+
+function showOfxPreview(txs){
+  ofxParsedTxs=txs;
+  const incomeCount=txs.filter(t=>t.type==='income').length;
+  const expenseCount=txs.filter(t=>t.type==='expense').length;
+  const dupCount=txs.filter(t=>t.isDuplicate).length;
+  const totalIncome=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExpense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+  document.getElementById('ofx-summary').innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Transações</div><div class="card-value" style="font-size:18px">${txs.length}</div><div class="card-sub">${incomeCount} receitas · ${expenseCount} despesas</div></div>
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Receitas</div><div class="card-value" style="font-size:18px;color:var(--green)">${fmt(totalIncome)}</div></div>
+      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Despesas</div><div class="card-value" style="font-size:18px;color:var(--red)">${fmt(totalExpense)}</div></div>
+    </div>
+    ${dupCount?`<div class="alert-banner" style="margin-top:10px"><span class="alert-banner-icon">⚠️</span><span class="alert-banner-text">${dupCount} possível${dupCount>1?'is':''} duplicata${dupCount>1?'s':''} detectada${dupCount>1?'s':''} (desmarcadas automaticamente)</span></div>`:''}
+  `;
+
+  const catOptions=Object.keys(CAT_ICONS).map(c=>`<option value="${c}">${CAT_ICONS[c]} ${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
+
+  document.getElementById('ofx-list').innerHTML=txs.map((t,i)=>`
+    <div class="ofx-item${t.isDuplicate?' ofx-dup':''}" data-idx="${i}">
+      <input type="checkbox" ${t.selected?'checked':''} onchange="ofxParsedTxs[${i}].selected=this.checked;updateOfxCount()"/>
+      <div class="ofx-item-info">
+        <div class="ofx-item-desc">${escHtml(t.desc)}${t.isDuplicate?'<span class="ofx-dup-badge">duplicata</span>':''}</div>
+        <div class="ofx-item-date">${t.date.slice(8,10)}/${t.date.slice(5,7)}/${t.date.slice(0,4)}</div>
+      </div>
+      <div class="ofx-item-amount" style="color:${t.type==='income'?'var(--green)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+      <select class="ofx-item-cat" onchange="ofxParsedTxs[${i}].category=this.value">${catOptions.replace(`value="${t.category}"`,`value="${t.category}" selected`)}</select>
+    </div>
+  `).join('');
+
+  document.getElementById('ofx-select-all').checked=txs.some(t=>t.selected);
+  updateOfxCount();
+  document.getElementById('ofx-overlay').classList.remove('hidden');
+}
+
+function toggleOfxSelectAll(){
+  const checked=document.getElementById('ofx-select-all').checked;
+  ofxParsedTxs.forEach(t=>t.selected=checked);
+  document.querySelectorAll('#ofx-list input[type="checkbox"]').forEach(cb=>cb.checked=checked);
+  updateOfxCount();
+}
+
+function updateOfxCount(){
+  const count=ofxParsedTxs.filter(t=>t.selected).length;
+  document.getElementById('ofx-selected-count').textContent=`${count} de ${ofxParsedTxs.length} selecionadas`;
+  document.getElementById('ofx-import-btn').textContent=`Importar ${count} transação${count!==1?'ões':''}`;
+}
+
+function closeOfxImport(){
+  document.getElementById('ofx-overlay').classList.add('hidden');
+  ofxParsedTxs=[];
+}
+
+function confirmOfxImport(){
+  const selected=ofxParsedTxs.filter(t=>t.selected);
+  if(!selected.length){alert('Selecione pelo menos uma transação para importar.');return;}
+  let imported=0;
+  selected.forEach(t=>{
+    transactions.push({
+      id:'tx'+Date.now()+Math.random(),
+      desc:t.desc,
+      amount:t.amount,
+      type:t.type,
+      category:t.category,
+      date:t.date,
+      respId:null,
+      note:'Importado via OFX'
+    });
+    imported++;
+  });
+  markUnsaved();
+  closeOfxImport();
+  render();
+  const toast=document.getElementById('toast');
+  toast.textContent=`✓ ${imported} transação${imported!==1?'ões':''} importada${imported!==1?'s':''}!`;
+  toast.classList.add('show');
+  setTimeout(()=>{toast.classList.remove('show');toast.textContent='✓ Arquivo salvo com sucesso!';},3000);
+}
 
 // ── EXTRATO PDF ──
 function printExtrato(){

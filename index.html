@@ -63,6 +63,23 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid transparent;background:var(--surface2);color:var(--text3);font-family:var(--font-body);transition:all .2s;white-space:nowrap;flex-shrink:0}
 .tab:hover{color:var(--text);background:var(--surface3)}
 .tab.active{background:var(--accent);color:#fff;border-color:var(--accent2);box-shadow:0 2px 10px rgba(124,111,247,.3)}
+.tab-icon{display:none}
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav{display:none}
+@media(max-width:814px){
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:90;background:var(--surface);border-top:1px solid var(--border);padding:4px 0 max(4px,env(safe-area-inset-bottom));gap:0;justify-content:space-around}
+  .bottom-nav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:none;background:none;color:var(--text3);font-size:9px;font-family:var(--font-body);font-weight:500;cursor:pointer;transition:color .15s;flex:1;min-width:0}
+  .bottom-nav-btn .bnav-icon{font-size:18px;line-height:1}
+  .bottom-nav-btn .bnav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .bottom-nav-btn.active{color:var(--accent)}
+  .bottom-nav-btn.active .bnav-icon{filter:drop-shadow(0 0 6px rgba(124,111,247,.5))}
+  .tabs{display:none}
+  #app-screen .app{padding-bottom:70px}
+}
+.more-menu-item{display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--font-body);font-weight:500;cursor:pointer;transition:all .15s;margin-bottom:8px}
+.more-menu-item:last-child{margin-bottom:0}
+.more-menu-item:hover{border-color:var(--accent);color:var(--accent)}
+.more-menu-item span{font-size:18px}
 .month-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .month-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all .15s}
 .month-btn:hover:not(:disabled){background:var(--surface3);color:var(--text)}
@@ -275,12 +292,16 @@ canvas{display:block}
 .inv-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:2px}
 .inv-stat-value{font-family:var(--font-heading);font-size:14px;font-weight:600}
 .inv-actions{display:flex;gap:6px;margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.inv-del-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;transition:all .15s;line-height:1}
+.inv-del-btn:hover{color:var(--red);background:var(--redbg)}
 .inv-btn{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all .15s;text-align:center;font-weight:500}
 .inv-btn:hover{border-color:var(--border2);color:var(--text)}
 .inv-btn.apply{border-color:var(--green);color:var(--green);background:var(--greenbg)}
 .inv-btn.apply:hover{background:var(--green);color:#0d2820}
 .inv-btn.redeem{border-color:var(--amber);color:var(--amber);background:var(--amberbg)}
 .inv-btn.redeem:hover{background:var(--amber);color:#261d08}
+.inv-btn.yield{border-color:#22d3ee;color:#22d3ee;background:rgba(34,211,238,.08)}
+.inv-btn.yield:hover{background:#22d3ee;color:#0a3340}
 .inv-btn.del:hover{border-color:var(--red);color:var(--red)}
 .inv-history{margin-top:12px;max-height:200px;overflow-y:auto}
 .inv-history::-webkit-scrollbar{width:4px}
@@ -300,9 +321,9 @@ canvas{display:block}
 .alert-banner-text{flex:1}
 .alert-banner-count{font-family:var(--font-heading);font-weight:700;font-size:15px}
 
-@media(max-width:640px){
+@media(max-width:814px){
   body{-webkit-text-size-adjust:100%}
-  .app{padding:0 12px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  .app{padding:0 12px}
   .header{padding:10px 0 0}
   .header-top{padding-bottom:8px}
   .header-left{flex:1;min-width:0}
@@ -522,6 +543,25 @@ canvas{display:block}
   <div class="page" id="page-history">
     <div style="padding:16px 0 14px"><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Histórico de meses</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Meses fechados ficam bloqueados para edição</div></div>
     <div class="history-grid" id="history-grid"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-btn active" onclick="showPage('transactions',null,this)" data-page="transactions"><span class="bnav-icon">💳</span><span class="bnav-label">Transações</span></button>
+  <button class="bottom-nav-btn" onclick="showPage('recurring',null,this)" data-page="recurring"><span class="bnav-icon">🔄</span><span class="bnav-label">Recorrentes</span></button>
+  <button class="bottom-nav-btn" onclick="showPage('charts',null,this)" data-page="charts"><span class="bnav-icon">📊</span><span class="bnav-label">Gráficos</span></button>
+  <button class="bottom-nav-btn" onclick="showPage('investments',null,this)" data-page="investments"><span class="bnav-icon">📈</span><span class="bnav-label">Investimentos</span></button>
+  <button class="bottom-nav-btn" onclick="showPage('annual',null,this)" data-page="annual"><span class="bnav-icon">📅</span><span class="bnav-label">Anual</span></button>
+  <button class="bottom-nav-btn" onclick="showPage('more',null,this)" data-page="more"><span class="bnav-icon">⋯</span><span class="bnav-label">Mais</span></button>
+</nav>
+
+<!-- MORE MENU (mobile) -->
+<div class="modal-overlay hidden" id="more-menu-overlay" onclick="closeMoreMenu()">
+  <div class="modal-card" style="text-align:left;padding:20px;width:280px" onclick="event.stopPropagation()">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:16px;margin-bottom:14px">Mais opções</div>
+    <button class="more-menu-item" onclick="showPage('people',null);closeMoreMenu()"><span>👥</span> Responsáveis</button>
+    <button class="more-menu-item" onclick="showPage('history',null);closeMoreMenu()"><span>📋</span> Histórico</button>
   </div>
 </div>
 </div>
@@ -1039,11 +1079,21 @@ function closeUnlockModal(){document.getElementById('unlock-modal').classList.ad
 function confirmUnlock(){paidMonths=paidMonths.filter(k=>k!==currentKey());markUnsaved();closeUnlockModal();render();}
 
 // ── PAGES ──
-function showPage(name,el){
+function showPage(name,el,bnav){
+  if(name==='more'){openMoreMenu();return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
+  // Update bottom nav active state
+  document.querySelectorAll('.bottom-nav-btn').forEach(b=>b.classList.remove('active'));
+  const navBtn=bnav||document.querySelector(`.bottom-nav-btn[data-page="${name}"]`);
+  if(navBtn) navBtn.classList.add('active');
+  // For pages in "more" menu, highlight the more button
+  if(name==='people'||name==='history'){
+    const moreBtn=document.querySelector('.bottom-nav-btn[data-page="more"]');
+    if(moreBtn) moreBtn.classList.add('active');
+  }
   if(name==='charts') renderCharts();
   if(name==='recurring') renderRecurring();
   if(name==='people') renderPeople();
@@ -1051,6 +1101,8 @@ function showPage(name,el){
   if(name==='annual') renderAnnual();
   if(name==='investments') renderInvestments();
 }
+function openMoreMenu(){document.getElementById('more-menu-overlay').classList.remove('hidden');}
+function closeMoreMenu(){document.getElementById('more-menu-overlay').classList.add('hidden');}
 
 // ── HISTORY ──
 function renderHistory(){
@@ -1573,20 +1625,25 @@ const INV_TYPES={'renda-fixa':{icon:'📊',label:'Renda Fixa',color:'#60a5fa'},'
 let editingInvId=null, invOpType=null, invOpTargetId=null;
 
 function getInvBalance(inv){
-  return (inv.operations||[]).reduce((s,op)=>s+(op.type==='apply'?op.amount:-op.amount),0);
+  return (inv.operations||[]).reduce((s,op)=>s+(op.type==='redeem'?-op.amount:op.amount),0);
 }
 function getInvTotalApplied(inv){return (inv.operations||[]).filter(op=>op.type==='apply').reduce((s,op)=>s+op.amount,0);}
 function getInvTotalRedeemed(inv){return (inv.operations||[]).filter(op=>op.type==='redeem').reduce((s,op)=>s+op.amount,0);}
+function getInvTotalYield(inv){return (inv.operations||[]).filter(op=>op.type==='yield').reduce((s,op)=>s+op.amount,0);}
+function getInvYieldPct(inv){const applied=getInvTotalApplied(inv);const yld=getInvTotalYield(inv);return applied>0?((yld/applied)*100):0;}
 
 function renderInvestments(){
   const totalBalance=investments.reduce((s,inv)=>s+getInvBalance(inv),0);
   const totalApplied=investments.reduce((s,inv)=>s+getInvTotalApplied(inv),0);
   const totalRedeemed=investments.reduce((s,inv)=>s+getInvTotalRedeemed(inv),0);
+  const totalYield=investments.reduce((s,inv)=>s+getInvTotalYield(inv),0);
+  const totalYieldPct=totalApplied>0?((totalYield/totalApplied)*100):0;
 
   document.getElementById('inv-summary').innerHTML=`
-    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Patrimônio investido</div><div class="card-value" style="color:var(--accent);font-size:20px">${fmt(totalBalance)}</div><div class="card-sub">${investments.length} investimento${investments.length!==1?'s':''}</div></div>
-    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Total aplicado</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(totalApplied)}</div></div>
-    <div class="card" style="flex:1;min-width:160px"><div class="card-label">Total resgatado</div><div class="card-value" style="color:var(--amber);font-size:20px">${fmt(totalRedeemed)}</div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-label">Patrimônio investido</div><div class="card-value" style="color:var(--accent);font-size:20px">${fmt(totalBalance)}</div><div class="card-sub">${investments.length} investimento${investments.length!==1?'s':''}</div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-label">Total aplicado</div><div class="card-value" style="color:var(--green);font-size:20px">${fmt(totalApplied)}</div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-label">Rendimento</div><div class="card-value" style="color:#22d3ee;font-size:20px">${fmt(totalYield)}</div><div class="card-sub" style="color:${totalYieldPct>=0?'#22d3ee':'var(--red)'}">${totalYieldPct>=0?'+':''}${totalYieldPct.toFixed(2)}%</div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-label">Total resgatado</div><div class="card-value" style="color:var(--amber);font-size:20px">${fmt(totalRedeemed)}</div></div>
   `;
 
   const list=document.getElementById('inv-list');
@@ -1600,40 +1657,49 @@ function renderInvestments(){
     const balance=getInvBalance(inv);
     const applied=getInvTotalApplied(inv);
     const redeemed=getInvTotalRedeemed(inv);
+    const yld=getInvTotalYield(inv);
+    const yldPct=getInvYieldPct(inv);
     const ops=(inv.operations||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
     const recentOps=ops.slice(0,3);
     const sid=String(inv.id);
+    const opIcon=op=>op.type==='apply'?'↑':op.type==='yield'?'✦':'↓';
+    const opBg=op=>op.type==='apply'?'var(--greenbg)':op.type==='yield'?'rgba(34,211,238,.12)':'var(--amberbg)';
+    const opColor=op=>op.type==='apply'?'var(--green)':op.type==='yield'?'#22d3ee':'var(--amber)';
+    const opLabel=op=>op.desc||(op.type==='apply'?'Aplicação':op.type==='yield'?'Rendimento':'Resgate');
+    const opSign=op=>op.type==='redeem'?'-':'+';
 
-    return `<div class="inv-card" data-invid="${sid}">
+    return `<div class="inv-card" data-invid="${sid}" onclick="openInvForm('${sid}')" style="cursor:pointer">
       <div class="inv-header">
         <div>
           <div class="inv-name">${t.icon} ${escHtml(inv.name)}</div>
           ${inv.note?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${escHtml(inv.note)}</div>`:''}
         </div>
-        <span class="inv-type-badge" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}44">${t.label}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="inv-type-badge" style="background:${t.color}22;color:${t.color};border:1px solid ${t.color}44">${t.label}</span>
+          <button class="inv-del-btn" onclick="event.stopPropagation();deleteInvestment('${sid}')" title="Excluir">✕</button>
+        </div>
       </div>
       <div class="inv-balance" style="color:${balance>=0?'var(--text)':'var(--red)'}">${fmt(balance)}</div>
       <div class="inv-stats">
         <div class="inv-stat"><div class="inv-stat-label">Aplicado</div><div class="inv-stat-value" style="color:var(--green)">${fmt(applied)}</div></div>
+        <div class="inv-stat"><div class="inv-stat-label">Rendimento</div><div class="inv-stat-value" style="color:#22d3ee">${fmt(yld)} <span style="font-size:11px;opacity:.7">${yldPct>=0?'+':''}${yldPct.toFixed(1)}%</span></div></div>
         <div class="inv-stat"><div class="inv-stat-label">Resgatado</div><div class="inv-stat-value" style="color:var(--amber)">${fmt(redeemed)}</div></div>
-        <div class="inv-stat"><div class="inv-stat-label">Operações</div><div class="inv-stat-value">${ops.length}</div></div>
       </div>
       ${recentOps.length?`<div class="inv-history">${recentOps.map(op=>`
         <div class="inv-tx">
-          <div class="inv-tx-icon" style="background:${op.type==='apply'?'var(--greenbg)':'var(--amberbg)'}">${op.type==='apply'?'↑':'↓'}</div>
+          <div class="inv-tx-icon" style="background:${opBg(op)}">${opIcon(op)}</div>
           <div class="inv-tx-info">
-            <div class="inv-tx-desc">${op.desc||( op.type==='apply'?'Aplicação':'Resgate')}</div>
+            <div class="inv-tx-desc">${opLabel(op)}</div>
             <div class="inv-tx-date">${op.date.slice(8,10)}/${op.date.slice(5,7)}/${op.date.slice(0,4)}</div>
           </div>
-          <div class="inv-tx-amount" style="color:${op.type==='apply'?'var(--green)':'var(--amber)'}">${op.type==='apply'?'+':'-'}${fmt(op.amount)}</div>
+          <div class="inv-tx-amount" style="color:${opColor(op)}">${opSign(op)}${fmt(op.amount)}</div>
         </div>`).join('')}
-        ${ops.length>3?`<div style="text-align:center;padding:6px 0"><button class="budget-edit" onclick="openInvDetail('${sid}')" style="font-size:12px">Ver todas (${ops.length})</button></div>`:''}
+        ${ops.length>3?`<div style="text-align:center;padding:6px 0"><button class="budget-edit" onclick="event.stopPropagation();openInvDetail('${sid}')" style="font-size:12px">Ver todas (${ops.length})</button></div>`:''}
       </div>`:''}
-      <div class="inv-actions">
+      <div class="inv-actions" onclick="event.stopPropagation()">
         <button class="inv-btn apply" onclick="openInvOp('${sid}','apply')">+ Aplicar</button>
+        <button class="inv-btn yield" onclick="openInvOp('${sid}','yield')">✦ Rendimento</button>
         <button class="inv-btn redeem" onclick="openInvOp('${sid}','redeem')">↓ Resgatar</button>
-        <button class="inv-btn" onclick="openInvForm('${sid}')">Editar</button>
-        <button class="inv-btn del" onclick="deleteInvestment('${sid}')">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -1678,14 +1744,18 @@ function deleteInvestment(id){
 function openInvOp(invId,type){
   invOpTargetId=invId;invOpType=type;
   const inv=investments.find(i=>String(i.id)===String(invId));
-  document.getElementById('inv-op-title').textContent=type==='apply'?`Aplicação — ${inv.name}`:`Resgate — ${inv.name}`;
+  const labels={apply:`Aplicação — ${inv.name}`,yield:`Rendimento — ${inv.name}`,redeem:`Resgate — ${inv.name}`};
+  const btnLabels={apply:'Aplicar',yield:'Registrar rendimento',redeem:'Resgatar'};
+  const btnBg={apply:'var(--green)',yield:'#22d3ee',redeem:'var(--amber)'};
+  const btnColor={apply:'#0d2820',yield:'#0a3340',redeem:'#261d08'};
+  document.getElementById('inv-op-title').textContent=labels[type];
   document.getElementById('inv-op-amount').value='';
   document.getElementById('inv-op-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('inv-op-desc').value='';
   const saveBtn=document.getElementById('inv-op-save-btn');
-  saveBtn.textContent=type==='apply'?'Aplicar':'Resgatar';
-  saveBtn.style.background=type==='apply'?'var(--green)':'var(--amber)';
-  saveBtn.style.color=type==='apply'?'#0d2820':'#261d08';
+  saveBtn.textContent=btnLabels[type];
+  saveBtn.style.background=btnBg[type];
+  saveBtn.style.color=btnColor[type];
   document.getElementById('inv-op-overlay').classList.remove('hidden');
   setTimeout(()=>document.getElementById('inv-op-amount').focus(),50);
 }
@@ -1719,24 +1789,32 @@ function openInvDetail(invId){
   let running=0;
   const opsAsc=(inv.operations||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
   const balanceMap={};
-  opsAsc.forEach(op=>{running+=(op.type==='apply'?op.amount:-op.amount);balanceMap[op.id]=running;});
+  opsAsc.forEach(op=>{running+=(op.type==='redeem'?-op.amount:op.amount);balanceMap[op.id]=running;});
+  const yld=getInvTotalYield(inv);
+  const yldPct=getInvYieldPct(inv);
+  const dOpIcon=op=>op.type==='apply'?'↑':op.type==='yield'?'✦':'↓';
+  const dOpBg=op=>op.type==='apply'?'var(--greenbg)':op.type==='yield'?'rgba(34,211,238,.12)':'var(--amberbg)';
+  const dOpColor=op=>op.type==='apply'?'var(--green)':op.type==='yield'?'#22d3ee':'var(--amber)';
+  const dOpLabel=op=>escHtml(op.desc||(op.type==='apply'?'Aplicação':op.type==='yield'?'Rendimento':'Resgate'));
+  const dOpSign=op=>op.type==='redeem'?'-':'+';
 
   document.getElementById('inv-detail-content').innerHTML=`
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Saldo atual</div><div class="card-value" style="font-size:18px;color:var(--accent)">${fmt(balance)}</div></div>
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Aplicado</div><div class="card-value" style="font-size:18px;color:var(--green)">${fmt(getInvTotalApplied(inv))}</div></div>
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Resgatado</div><div class="card-value" style="font-size:18px;color:var(--amber)">${fmt(getInvTotalRedeemed(inv))}</div></div>
+      <div class="card" style="flex:1;min-width:100px"><div class="card-label">Saldo atual</div><div class="card-value" style="font-size:18px;color:var(--accent)">${fmt(balance)}</div></div>
+      <div class="card" style="flex:1;min-width:100px"><div class="card-label">Aplicado</div><div class="card-value" style="font-size:18px;color:var(--green)">${fmt(getInvTotalApplied(inv))}</div></div>
+      <div class="card" style="flex:1;min-width:100px"><div class="card-label">Rendimento</div><div class="card-value" style="font-size:18px;color:#22d3ee">${fmt(yld)}</div><div class="card-sub" style="color:${yldPct>=0?'#22d3ee':'var(--red)'}">${yldPct>=0?'+':''}${yldPct.toFixed(2)}%</div></div>
+      <div class="card" style="flex:1;min-width:100px"><div class="card-label">Resgatado</div><div class="card-value" style="font-size:18px;color:var(--amber)">${fmt(getInvTotalRedeemed(inv))}</div></div>
     </div>
     <div style="font-family:var(--font-heading);font-size:14px;font-weight:700;margin-bottom:10px">Histórico de operações</div>
     ${ops.length?`<div style="max-height:350px;overflow-y:auto">${ops.map(op=>`
       <div class="inv-tx" style="padding:10px 0">
-        <div class="inv-tx-icon" style="background:${op.type==='apply'?'var(--greenbg)':'var(--amberbg)'}; font-size:14px">${op.type==='apply'?'↑':'↓'}</div>
+        <div class="inv-tx-icon" style="background:${dOpBg(op)}; font-size:14px">${dOpIcon(op)}</div>
         <div class="inv-tx-info">
-          <div class="inv-tx-desc">${escHtml(op.desc||(op.type==='apply'?'Aplicação':'Resgate'))}</div>
+          <div class="inv-tx-desc">${dOpLabel(op)}</div>
           <div class="inv-tx-date">${op.date.slice(8,10)}/${op.date.slice(5,7)}/${op.date.slice(0,4)}</div>
         </div>
         <div style="text-align:right">
-          <div class="inv-tx-amount" style="color:${op.type==='apply'?'var(--green)':'var(--amber)'}">${op.type==='apply'?'+':'-'}${fmt(op.amount)}</div>
+          <div class="inv-tx-amount" style="color:${dOpColor(op)}">${dOpSign(op)}${fmt(op.amount)}</div>
           <div style="font-size:11px;color:var(--text3)">Saldo: ${fmt(balanceMap[op.id]||0)}</div>
         </div>
         <button class="tx-del" style="opacity:1" onclick="deleteInvOp('${invId}','${op.id}')">✕</button>
@@ -1780,7 +1858,7 @@ document.getElementById('overlay').addEventListener('click',function(e){if(e.tar
 document.getElementById('inv-form-overlay').addEventListener('click',function(e){if(e.target===this)closeInvForm();});
 document.getElementById('inv-op-overlay').addEventListener('click',function(e){if(e.target===this)closeInvOp();});
 document.getElementById('inv-detail-overlay').addEventListener('click',function(e){if(e.target===this)closeInvDetail();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();closeMoreMenu();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
 // Init money input formatters

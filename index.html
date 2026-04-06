@@ -565,8 +565,8 @@ canvas{display:block}
 <div class="modal-overlay hidden" id="budget-modal">
   <div class="modal-card" style="text-align:left">
     <div class="modal-title" style="text-align:center">Definir orçamento</div>
-    <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="budget-cat-select" onchange="budgetEditCat=this.value;document.getElementById('budget-amount').value=budgets[this.value]||''"></select></div>
-    <div class="form-group"><label class="form-label">Limite mensal (R$)</label><input class="form-input" id="budget-amount" type="number" placeholder="0,00" min="0" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="budget-cat-select" onchange="budgetEditCat=this.value;if(budgets[this.value])setMoneyValue(document.getElementById('budget-amount'),budgets[this.value]);else document.getElementById('budget-amount').value=''"></select></div>
+    <div class="form-group"><label class="form-label">Limite mensal (R$)</label><input class="form-input money-input" id="budget-amount" type="text" inputmode="numeric" placeholder="R$ 0,00"/></div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Deixe vazio ou 0 para remover o orçamento</div>
     <div class="modal-actions"><button class="modal-cancel" onclick="closeBudgetModal()">Cancelar</button><button class="btn-save" style="flex:2" onclick="saveBudget()">Salvar</button></div>
   </div>
@@ -595,7 +595,7 @@ canvas{display:block}
 <div class="overlay hidden" id="inv-op-overlay">
   <div class="form-card">
     <div class="form-title" id="inv-op-title">Aplicação</div>
-    <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input" id="inv-op-amount" type="number" placeholder="0,00" min="0" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input money-input" id="inv-op-amount" type="text" inputmode="numeric" placeholder="R$ 0,00"/></div>
     <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="inv-op-date" type="date"/></div>
     <div class="form-group"><label class="form-label">Descrição (opcional)</label><input class="form-input" id="inv-op-desc" placeholder="Ex: Aporte mensal"/></div>
     <div class="form-actions"><button class="btn-cancel" onclick="closeInvOp()">Cancelar</button><button class="btn-save" id="inv-op-save-btn" onclick="saveInvOperation()">Salvar</button></div>
@@ -620,10 +620,10 @@ canvas{display:block}
     <div class="form-group"><label class="form-label">Tipo</label><div class="type-toggle"><button class="type-btn active-expense" id="btn-expense" onclick="setType('expense')">Despesa</button><button class="type-btn" id="btn-income" onclick="setType('income')">Receita</button></div></div>
     <div class="form-group"><label class="form-label">Descrição</label><input class="form-input" id="f-desc" placeholder="Ex: Supermercado"/></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input" id="f-amount" type="number" placeholder="0,00" min="0" step="0.01"/></div>
+      <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input money-input" id="f-amount" type="text" inputmode="numeric" placeholder="R$ 0,00"/></div>
       <div class="form-group" id="f-date-group"><label class="form-label">Data</label><input class="form-input" id="f-date" type="date"/></div>
     </div>
-    <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="f-category"><option value="alimentação">🍽 Alimentação</option><option value="mercado">🛒 Mercado</option><option value="transporte">🚗 Transporte</option><option value="moradia">🏠 Moradia</option><option value="saúde">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educação">📚 Educação</option><option value="salário">💼 Salário</option><option value="outros">📦 Outros</option></select></div>
+    <div class="form-group"><label class="form-label">Categoria</label><select class="form-input" id="f-category"><option value="alimentação">🍽 Alimentação</option><option value="mercado">🛒 Mercado</option><option value="transporte">🚗 Transporte</option><option value="moradia">🏠 Moradia</option><option value="saúde">💊 Saúde</option><option value="lazer">🎮 Lazer</option><option value="educação">📚 Educação</option><option value="assinaturas">📺 Assinaturas</option><option value="viagens">✈️ Viagens</option><option value="beleza">💅 Beleza</option><option value="contas">📄 Contas</option><option value="compras">🛍 Compras</option><option value="pet shop">🐶 Pet Shop</option><option value="veterinário">🐾 Veterinário</option><option value="salário">💼 Salário</option><option value="outras receitas">💰 Outras Receitas</option><option value="outros">📦 Outros</option></select></div>
     <div class="form-group" id="f-resp-group"><label class="form-label">Responsável</label><div class="resp-selector" id="f-resp-selector"></div></div>
 
     <div class="form-group" id="f-note-group"><label class="form-label">Observação (opcional)</label><input class="form-input" id="f-note" placeholder="Ex: Compra no cartão Nubank"/></div>
@@ -656,9 +656,42 @@ canvas{display:block}
 <script>
 const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const CAT_COLORS={'alimentação':'#f87171','transporte':'#fbbf24','moradia':'#60a5fa','saúde':'#3ecf8e','lazer':'#c084fc','educação':'#fb923c','salário':'#34d399','mercado':'#38bdf8','outros':'#94a3b8'};
-const CAT_ICONS={'alimentação':'🍽','transporte':'🚗','moradia':'🏠','saúde':'💊','lazer':'🎮','educação':'📚','salário':'💼','mercado':'🛒','outros':'📦'};
+const CAT_COLORS={'alimentação':'#f87171','transporte':'#fbbf24','moradia':'#60a5fa','saúde':'#3ecf8e','lazer':'#c084fc','educação':'#fb923c','salário':'#34d399','mercado':'#38bdf8','assinaturas':'#a78bfa','viagens':'#22d3ee','beleza':'#f9a8d4','contas':'#64748b','outras receitas':'#10b981','compras':'#e879f9','pet shop':'#f59e0b','veterinário':'#84cc16','outros':'#94a3b8'};
+const CAT_ICONS={'alimentação':'🍽','transporte':'🚗','moradia':'🏠','saúde':'💊','lazer':'🎮','educação':'📚','salário':'💼','mercado':'🛒','assinaturas':'📺','viagens':'✈️','beleza':'💅','contas':'📄','outras receitas':'💰','compras':'🛍','pet shop':'🐶','veterinário':'🐾','outros':'📦'};
 const RESP_PALETTE=['#7c6ff7','#3ecf8e','#f87171','#fbbf24','#60a5fa','#c084fc','#fb923c','#34d399'];
+
+// ── MONEY INPUT FORMATTER ──
+function formatMoneyInput(value){
+  const digits=value.replace(/\D/g,'');
+  if(!digits) return '';
+  const num=parseInt(digits,10);
+  const reais=Math.floor(num/100);
+  const cents=String(num%100).padStart(2,'0');
+  return 'R$ '+reais.toLocaleString('pt-BR')+','+cents;
+}
+function parseMoneyInput(str){
+  const digits=str.replace(/\D/g,'');
+  if(!digits) return 0;
+  return parseInt(digits,10)/100;
+}
+function setMoneyValue(el,num){
+  if(!num&&num!==0){el.value='';return;}
+  const cents=Math.round(num*100);
+  const reais=Math.floor(cents/100);
+  const c=String(cents%100).padStart(2,'0');
+  el.value='R$ '+reais.toLocaleString('pt-BR')+','+c;
+}
+function initMoneyInputs(){
+  document.querySelectorAll('.money-input').forEach(el=>{
+    if(el._moneyBound) return;
+    el._moneyBound=true;
+    el.addEventListener('input',function(){
+      const pos=this.value.length;
+      this.value=formatMoneyInput(this.value);
+      this.dispatchEvent(new Event('moneychange'));
+    });
+  });
+}
 
 let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
@@ -1281,7 +1314,7 @@ function setRecurType(type){
 }
 
 function updateParcelaHint(){
-  const amount=parseFloat(document.getElementById('f-amount').value)||0;
+  const amount=parseMoneyInput(document.getElementById('f-amount').value)||0;
   const parcelas=parseInt(document.getElementById('f-parcelas').value)||0;
   const hint=document.getElementById('f-parcela-hint');
   if(!hint) return;
@@ -1307,7 +1340,7 @@ function openForm(tx,recurMode=false,recurTx=null){
 
   const src=tx||recurTx;
   document.getElementById('f-desc').value=src?src.desc:'';
-  document.getElementById('f-amount').value=src?src.amount:'';
+  if(src) setMoneyValue(document.getElementById('f-amount'),src.amount); else document.getElementById('f-amount').value='';
   document.getElementById('f-date').value=src?src.date:new Date().toISOString().split('T')[0];
   document.getElementById('f-category').value=src?src.category:'alimentação';
   document.getElementById('f-note').value=src?src.note||'':'';
@@ -1338,7 +1371,7 @@ function setType(t){formType=t;document.getElementById('btn-expense').className=
 
 function saveTransaction(){
   const desc=document.getElementById('f-desc').value.trim();
-  const amount=parseFloat(document.getElementById('f-amount').value);
+  const amount=parseMoneyInput(document.getElementById('f-amount').value);
   const date=document.getElementById('f-date').value;
   const category=document.getElementById('f-category').value;
   const note=document.getElementById('f-note').value.trim();
@@ -1458,13 +1491,13 @@ function openBudgetModal(cat){
   budgetEditCat=cat;
   const sel=document.getElementById('budget-cat-select');
   sel.innerHTML=Object.keys(CAT_ICONS).map(c=>`<option value="${c}"${c===cat?' selected':''}>${CAT_ICONS[c]} ${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
-  document.getElementById('budget-amount').value=budgets[cat]||'';
+  if(budgets[cat]) setMoneyValue(document.getElementById('budget-amount'),budgets[cat]); else document.getElementById('budget-amount').value='';
   document.getElementById('budget-modal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('budget-amount').focus(),50);
 }
 function closeBudgetModal(){document.getElementById('budget-modal').classList.add('hidden');budgetEditCat=null;}
 function saveBudget(){
-  const val=parseFloat(document.getElementById('budget-amount').value);
+  const val=parseMoneyInput(document.getElementById('budget-amount').value);
   if(budgetEditCat){
     if(val>0) budgets[budgetEditCat]=val;
     else delete budgets[budgetEditCat];
@@ -1659,7 +1692,7 @@ function openInvOp(invId,type){
 function closeInvOp(){document.getElementById('inv-op-overlay').classList.add('hidden');invOpTargetId=null;invOpType=null;}
 
 function saveInvOperation(){
-  const amount=parseFloat(document.getElementById('inv-op-amount').value);
+  const amount=parseMoneyInput(document.getElementById('inv-op-amount').value);
   const date=document.getElementById('inv-op-date').value;
   const desc=document.getElementById('inv-op-desc').value.trim();
   if(!amount||amount<=0){alert('Informe um valor válido');return;}
@@ -1750,8 +1783,10 @@ document.getElementById('inv-detail-overlay').addEventListener('click',function(
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
+// Init money input formatters
+initMoneyInputs();
 // Update hint when amount changes
-document.getElementById('f-amount').addEventListener('input',()=>{if(recurType==='installment')updateParcelaHint();});
+document.getElementById('f-amount').addEventListener('moneychange',()=>{if(recurType==='installment')updateParcelaHint();});
 
 // ── EXTRATO PDF ──
 function printExtrato(){

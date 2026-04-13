@@ -41,14 +41,37 @@ let now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
 let formType='expense', isRecurringForm=false, selectedResp=null, editingRecurId=null;
 let recurType='none'; // 'none' | 'infinite' | 'installment'
 let currentFileName='montra.json';
-let transactions=[], recurring=[], responsibles=[], paidMonths=[], budgets={}, investments=[];
+let transactions=[], recurring=[], responsibles=[], paidMonths=[], closedMonths=[], budgets={}, investments=[];
+let settings={closeDay:null,dueDay:null,autoClose:false};
 let charts={};
 let pendingDeleteId=null;
 let annualYear=new Date().getFullYear();
 
 const LS_KEY='montra_data';
+const LS_THEME='montra_theme';
+const LS_LAST_EXPORT='montra_last_export';
+
+function applyTheme(theme){
+  if(theme==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  const ic=document.getElementById('theme-icon');
+  const lb=document.getElementById('theme-label');
+  if(ic) ic.textContent=theme==='light'?'☀️':'🌙';
+  if(lb) lb.textContent=theme==='light'?'Tema escuro':'Tema claro';
+  // Repintar charts se na aba ativa
+  const chartsPage=document.getElementById('page-charts');
+  if(chartsPage&&chartsPage.classList.contains('active')) renderCharts();
+}
+function toggleTheme(){
+  const cur=localStorage.getItem(LS_THEME)==='light'?'light':'dark';
+  const nxt=cur==='light'?'dark':'light';
+  localStorage.setItem(LS_THEME,nxt);
+  applyTheme(nxt);
+}
+// Aplicar tema imediatamente no carregamento (antes do DOM completo)
+(function(){try{applyTheme(localStorage.getItem(LS_THEME)||'dark');}catch(e){}})();
 function saveToLS(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets,investments}));}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify({version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,closedMonths,budgets,investments,settings}));}catch(e){}
 }
 
 function buildFileName(){
@@ -60,8 +83,48 @@ function buildFileName(){
   const min=String(d.getMinutes()).padStart(2,'0');
   return `DB${dd}${mm}${yyyy}T${hh}${min}.json`;
 }
-function markUnsaved(){saveToLS();}
-function markSaved(){}
+let editsSinceExport=0;
+function markUnsaved(){
+  saveToLS();
+  editsSinceExport++;
+  updateSaveBtnBadge();
+  maybeShowBackupBanner();
+}
+function markSaved(){
+  editsSinceExport=0;
+  localStorage.setItem(LS_LAST_EXPORT,Date.now().toString());
+  updateSaveBtnBadge();
+  const b=document.getElementById('backup-banner');
+  if(b) b.style.display='none';
+}
+function updateSaveBtnBadge(){
+  const btn=document.getElementById('save-btn');
+  if(!btn) return;
+  if(editsSinceExport>0){
+    btn.classList.add('unsaved');
+    btn.title=`${editsSinceExport} alteração(ões) não exportadas`;
+  } else {
+    btn.classList.remove('unsaved');
+    btn.title='Exportar backup';
+  }
+}
+function maybeShowBackupBanner(){
+  const b=document.getElementById('backup-banner');
+  if(!b) return;
+  const lastExp=parseInt(localStorage.getItem(LS_LAST_EXPORT)||'0');
+  const days=(Date.now()-lastExp)/(1000*60*60*24);
+  const neverExported=!lastExp;
+  if(editsSinceExport>=15 || (lastExp && days>=7 && editsSinceExport>0) || (neverExported && editsSinceExport>=5)){
+    let msg;
+    if(neverExported) msg=`Você tem ${editsSinceExport} alteração(ões) sem backup. Exporte para não perder dados.`;
+    else if(days>=7) msg=`Última exportação há ${Math.floor(days)} dias · ${editsSinceExport} alteração(ões) pendentes.`;
+    else msg=`${editsSinceExport} alterações sem backup — considere exportar.`;
+    b.innerHTML=`<span>💾 ${msg}</span><button class="backup-banner-btn" onclick="saveToFile()">Exportar agora</button><button class="backup-banner-close" onclick="document.getElementById('backup-banner').style.display='none'" title="Dispensar">✕</button>`;
+    b.style.display='flex';
+  } else {
+    b.style.display='none';
+  }
+}
 
 // ── WELCOME ──
 function continueFromLS(){startApp('dados salvos');}
@@ -78,9 +141,12 @@ function loadFromFile(e){
       recurring=data.recurring||[];
       responsibles=data.responsibles||[];
       paidMonths=data.paidMonths||[];
+      closedMonths=data.closedMonths||[];
       budgets=data.budgets||{};
       investments=data.investments||[];
+      settings=Object.assign({closeDay:null,dueDay:null,autoClose:false},data.settings||{});
       currentFileName=file.name;
+      migrateInvoiceKeys();
       saveToLS();
       startApp(file.name);
     }catch(err){alert('Arquivo JSON inválido. Verifique o arquivo e tente novamente.');}
@@ -90,7 +156,7 @@ function loadFromFile(e){
 }
 
 function createNew(){
-  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[]; budgets={}; investments=[];
+  transactions=[]; recurring=[]; responsibles=[]; paidMonths=[]; closedMonths=[]; budgets={}; investments=[]; settings={closeDay:null,dueDay:null,autoClose:false};
   currentFileName='montra.json';
   startApp('novo arquivo');
 }
@@ -101,10 +167,15 @@ function startApp(label){
   document.getElementById('app-screen').style.display='block';
   document.getElementById('session-name-label').textContent=label;
   currentYear=now.getFullYear(); currentMonth=now.getMonth();
+  runAutoClose();
   applyRecurrences();
   render();
   document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',i===0);});
   document.querySelectorAll('.page').forEach((p,i)=>{p.classList.toggle('active',i===0);});
+  applyTheme(localStorage.getItem(LS_THEME)||'dark');
+  updateSaveBtnBadge();
+  maybeShowBackupBanner();
+  maybeShowDueBanner();
 }
 
 function closeSession(){
@@ -116,7 +187,7 @@ function closeSession(){
 
 // ── SAVE TO FILE ──
 function saveToFile(){
-  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,budgets,investments};
+  const data={version:'1.0',savedAt:new Date().toISOString(),transactions,recurring,responsibles,paidMonths,closedMonths,budgets,investments,settings};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -131,18 +202,42 @@ function showToast(){
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
 }
+function showRollToast(msg){
+  const t=document.getElementById('toast');
+  const prev=t.textContent;
+  t.textContent='ℹ️ '+msg;
+  t.classList.add('show');
+  setTimeout(()=>{t.classList.remove('show');t.textContent=prev;},3000);
+}
 
 // ── DATA HELPERS ──
 function monthKey(y,m){return `${y}-${String(m+1).padStart(2,'0')}`}
 function isMonthPaid(y,m){return paidMonths.includes(monthKey(y,m))}
+function isMonthClosed(y,m){return closedMonths.includes(monthKey(y,m))}
+function isMonthLocked(y,m){return isMonthPaid(y,m)||isMonthClosed(y,m)}
 function currentKey(){return monthKey(currentYear,currentMonth)}
 function isCurrentPaid(){return isMonthPaid(currentYear,currentMonth)}
+function isCurrentClosed(){return isMonthClosed(currentYear,currentMonth)}
+function isCurrentLocked(){return isMonthLocked(currentYear,currentMonth)}
+function getTxInvoiceKey(t){return t.invoiceKey||t.date.slice(0,7)}
+function nextOpenInvoiceKey(y,m){let yy=y,mm=m;for(let i=0;i<240;i++){if(!isMonthLocked(yy,mm))return monthKey(yy,mm);mm++;if(mm>11){mm=0;yy++;}}return monthKey(y,m);}
+function resolveInvoiceForDate(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  let y=d.getFullYear(), m=d.getMonth();
+  // Se há dia de fechamento configurado e a data ultrapassou esse dia, fatura é do mês seguinte
+  if(settings.closeDay&&d.getDate()>settings.closeDay){
+    m++;
+    if(m>11){m=0;y++;}
+  }
+  return nextOpenInvoiceKey(y,m);
+}
+function migrateInvoiceKeys(){let changed=false;transactions.forEach(t=>{if(!t.invoiceKey&&t.date){t.invoiceKey=t.date.slice(0,7);changed=true;}});if(changed) saveToLS();}
 function getRespColor(id){const idx=responsibles.findIndex(r=>r.id===id);return idx>=0?RESP_PALETTE[idx%RESP_PALETTE.length]:'#94a3b8';}
 function getRespName(id){const r=responsibles.find(x=>x.id===id);return r?r.name:'—';}
 function getRespInitials(id){const n=getRespName(id);return n==='—'?'?':n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function fmt(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function getCurrentTxs(){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===currentYear&&d.getMonth()===currentMonth;}).sort((a,b)=>b.date.localeCompare(a.date));}
-function getMonthTxs(y,m){return transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===y&&d.getMonth()===m;});}
+function getCurrentTxs(){const k=currentKey();return transactions.filter(t=>getTxInvoiceKey(t)===k).sort((a,b)=>b.date.localeCompare(a.date));}
+function getMonthTxs(y,m){const k=monthKey(y,m);return transactions.filter(t=>getTxInvoiceKey(t)===k);}
 
 // Count how many installments of a recurring have been applied (only closed months)
 function getInstallmentCount(recurId){
@@ -157,15 +252,13 @@ function getPaidInstallmentCount(recurId){
 }
 
 function applyRecurrences(){
-  if(isCurrentPaid()) return;
+  if(isCurrentLocked()) return;
+  const curKey=currentKey();
   const m=String(currentMonth+1).padStart(2,'0');
   let changed=false;
   recurring.forEach(r=>{
-    const already=transactions.some(t=>t.recurId===r.id&&t.date.startsWith(`${currentYear}-${m}`));
-    if(already) return;
-
+    if(r.manualOnly) return;
     if(r.isInstallment){
-      // Use stored start month; fallback to first transaction date for legacy data
       let sYear=r.startYear, sMonth=r.startMonth;
       if(sYear==null||sMonth==null){
         const firstTx=transactions.filter(t=>t.recurId===r.id).sort((a,b)=>a.date.localeCompare(b.date))[0];
@@ -174,38 +267,42 @@ function applyRecurrences(){
         sYear=d.getFullYear(); sMonth=d.getMonth();
         r.startYear=sYear; r.startMonth=sMonth;
       }
-      // Calculate month offset from start
-      const offset=(currentYear-sYear)*12+(currentMonth-sMonth);
-      if(offset<0) return; // Month is before start
-      if(offset>=r.totalInstallments) return; // All installments already covered
-      const installmentNum=offset+1;
-      transactions.push({
-        id:'r'+Date.now()+Math.random(),
-        desc:r.desc,
-        amount:r.amount,
-        type:r.type,
-        category:r.category,
-        date:`${currentYear}-${m}-01`,
-        recurId:r.id,
-        respId:r.respId||null,
-        installmentNum,
-        totalInstallments:r.totalInstallments
-      });
-      changed=true;
+      const curOffset=(currentYear-sYear)*12+(currentMonth-sMonth);
+      if(curOffset<0) return;
+      const existing=new Set(transactions.filter(t=>t.recurId===r.id).map(t=>t.installmentNum));
+      for(let o=0;o<=curOffset&&o<r.totalInstallments;o++){
+        const num=o+1;
+        if(existing.has(num)) continue;
+        let ty=sYear, tm=sMonth+o;
+        while(tm>11){tm-=12;ty++;}
+        const ownKey=monthKey(ty,tm);
+        // Only land here if this month is the invoice destination for that theoretical month
+        if(ownKey!==curKey && !isMonthLocked(ty,tm)) continue;
+        if(isMonthLocked(ty,tm) && nextOpenInvoiceKey(ty,tm)!==curKey) continue;
+        const theoreticalM=String(tm+1).padStart(2,'0');
+        transactions.push({
+          id:'r'+Date.now()+Math.random(),
+          desc:r.desc,amount:r.amount,type:r.type,category:r.category,
+          date:`${ty}-${theoreticalM}-01`,
+          invoiceKey:curKey,
+          recurId:r.id,respId:r.respId||null,
+          installmentNum:num,
+          totalInstallments:r.totalInstallments
+        });
+        changed=true;
+      }
     } else {
-      // Infinite recurring — don't apply to months before first transaction
       const firstTx=transactions.filter(t=>t.recurId===r.id).sort((a,b)=>a.date.localeCompare(b.date))[0];
       if(!firstTx) return;
       if(`${currentYear}-${m}`<firstTx.date.slice(0,7)) return;
+      const already=transactions.some(t=>t.recurId===r.id&&getTxInvoiceKey(t)===curKey);
+      if(already) return;
       transactions.push({
         id:'r'+Date.now()+Math.random(),
-        desc:r.desc,
-        amount:r.amount,
-        type:r.type,
-        category:r.category,
+        desc:r.desc,amount:r.amount,type:r.type,category:r.category,
         date:`${currentYear}-${m}-01`,
-        recurId:r.id,
-        respId:r.respId||null
+        invoiceKey:curKey,
+        recurId:r.id,respId:r.respId||null
       });
       changed=true;
     }
@@ -217,17 +314,24 @@ function applyRecurrences(){
 function render(){
   document.getElementById('month-label').textContent=MONTHS[currentMonth]+' '+currentYear;
   const paid=isCurrentPaid();
+  const closed=isCurrentClosed();
   const banner=document.getElementById('lock-banner-area');
-  const payBtn=document.getElementById('pay-month-btn');
+  const closeBtn=document.getElementById('pay-month-btn');
+  const payBtn=document.getElementById('pay-invoice-btn');
   const badgeArea=document.getElementById('paid-badge-area');
   const addBtn=document.getElementById('add-tx-btn');
   if(paid){
-    banner.innerHTML=`<div class="lock-banner"><div class="lock-banner-left"><span style="font-size:20px">🔒</span><div><div class="lock-title">Mês fechado — somente leitura</div><div class="lock-sub">Fechado em ${MONTHS[currentMonth]} ${currentYear}</div></div></div><button class="unlock-btn" onclick="openUnlockModal()">🔓 Reabrir</button></div>`;
+    banner.innerHTML=`<div class="lock-banner"><div class="lock-banner-left"><span style="font-size:20px">🔒</span><div><div class="lock-title">Fatura paga — somente leitura</div><div class="lock-sub">${MONTHS[currentMonth]} ${currentYear}</div></div></div><button class="unlock-btn" onclick="openUnlockModal()">🔓 Reabrir</button></div>`;
     badgeArea.innerHTML=`<span class="paid-badge"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Pago</span>`;
-    payBtn.style.display='none'; addBtn.disabled=true;
+    closeBtn.style.display='none'; if(payBtn) payBtn.style.display='none'; addBtn.disabled=true;
+  } else if(closed){
+    banner.innerHTML=`<div class="lock-banner"><div class="lock-banner-left"><span style="font-size:20px">📋</span><div><div class="lock-title">Fatura fechada</div><div class="lock-sub">Novos lançamentos vão para a próxima fatura aberta</div></div></div><button class="unlock-btn" onclick="openUnlockModal()">🔓 Reabrir</button></div>`;
+    badgeArea.innerHTML=`<span class="paid-badge" style="background:var(--surface2);color:var(--text2)">📋 Fechada</span>`;
+    closeBtn.style.display='none'; if(payBtn) payBtn.style.display='flex'; addBtn.disabled=false;
   } else {
-    banner.innerHTML=''; badgeArea.innerHTML=''; payBtn.style.display='flex'; addBtn.disabled=false;
+    banner.innerHTML=''; badgeArea.innerHTML=''; closeBtn.style.display='flex'; if(payBtn) payBtn.style.display='none'; addBtn.disabled=false;
   }
+  renderMonthHeatmap();
   const txs=getCurrentTxs();
   const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -239,6 +343,30 @@ function render(){
   document.getElementById('expense-count').textContent=txs.filter(t=>t.type==='expense').length+' transações';
   document.getElementById('balance-label').textContent=balance>=0?'saldo positivo ↑':'saldo negativo ↓';
   document.getElementById('total-balance').style.color=balance>=0?'var(--green)':'var(--red)';
+
+  // Próxima fatura aberta (após a atual)
+  let ny=currentYear, nm=currentMonth+1;
+  if(nm>11){nm=0;ny++;}
+  const nextKey=nextOpenInvoiceKey(ny,nm);
+  const nextTxs=transactions.filter(t=>getTxInvoiceKey(t)===nextKey);
+  const nextExp=nextTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const [nextYr,nextMo]=nextKey.split('-');
+  document.getElementById('next-invoice-value').textContent=fmt(nextExp);
+  document.getElementById('next-invoice-sub').textContent=`${MONTHS_SHORT[parseInt(nextMo)-1]}/${nextYr} · ${nextTxs.length} lançamento${nextTxs.length!==1?'s':''}`;
+
+  // Orçamento do mês
+  const budgetCard=document.getElementById('budget-summary-card');
+  const totalBudget=Object.values(budgets).reduce((s,v)=>s+v,0);
+  if(totalBudget>0){
+    const pct=Math.round(expense/totalBudget*100);
+    budgetCard.style.display='';
+    const valEl=document.getElementById('budget-summary-value');
+    valEl.textContent=`${pct}%`;
+    valEl.style.color=pct>100?'var(--red)':pct>80?'var(--amber)':'var(--green)';
+    document.getElementById('budget-summary-sub').textContent=`${fmt(expense)} / ${fmt(totalBudget)}`;
+  } else {
+    budgetCard.style.display='none';
+  }
 
   // Populate filter dropdowns
   const catSelect=document.getElementById('tx-filter-cat');
@@ -269,6 +397,7 @@ function render(){
   else if(sortMode==='amount-asc') filtered.sort((a,b)=>a.amount-b.amount);
   else if(sortMode==='cat') filtered.sort((a,b)=>a.category.localeCompare(b.category));
 
+
   // Installment alerts
   const alertArea=document.getElementById('installment-alert-area');
   const activeInstalls=recurring.filter(r=>{
@@ -288,6 +417,10 @@ function render(){
       const color=getRespColor(t.respId),initials=getRespInitials(t.respId),name=getRespName(t.respId);
       const sid=String(t.id);
 
+      // Badge: rolled from closed invoice
+      const txMonthKey=t.date.slice(0,7);
+      const invKey=getTxInvoiceKey(t);
+      const rolledBadge=(invKey!==txMonthKey)?`<span class="install-badge" title="Realizada em ${txMonthKey.slice(5)}/${txMonthKey.slice(0,4)}" style="background:#fbbf2422;color:#d97706">🔄</span>`:'';
       // Badge: installment or recurring
       let badge='';
       if(t.recurId){
@@ -298,13 +431,15 @@ function render(){
         } else {
           badge='<span class="recur-badge">↻</span>';
         }
+      } else if(t.installmentNum&&t.totalInstallments){
+        badge=`<span class="install-badge">${t.installmentNum}/${t.totalInstallments}</span>`;
       }
 
       return `<div class="tx-item${paid?' locked':''}${t.paid?' tx-checked':''}" data-txid="${sid}">
         ${paid?'<div class="tx-paid-dot"></div>':`<button class="tx-check${t.paid?' checked':''}" data-check="${sid}" title="${t.paid?'Desmarcar':'Marcar como pago'}"></button>`}
         <div class="tx-icon" style="background:${CAT_COLORS[t.category]||'#94a3b8'}22">${CAT_ICONS[t.category]||'📦'}</div>
         <div class="tx-info">
-          <div class="tx-name">${escHtml(t.desc)}${badge}</div>
+          <div class="tx-name">${escHtml(t.desc)}${badge}${rolledBadge}</div>
           <div class="tx-meta"><span style="color:var(--text3)">${t.category}</span>${t.respId?`<span class="resp-chip" style="background:${color}22;color:${color}"><span style="width:14px;height:14px;border-radius:50%;background:${color};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff">${initials}</span>${name}</span>`:''}</div>
           ${t.note?`<div class="tx-note">📝 ${escHtml(t.note)}</div>`:''}
         </div>
@@ -367,20 +502,76 @@ function changeMonth(d){
   applyRecurrences(); render();
 }
 
-// ── PAY MONTH ──
+function renderMonthHeatmap(){
+  const hm=document.getElementById('month-heatmap');
+  if(!hm) return;
+  hm.innerHTML=`<div class="hm-year">${currentYear}</div>`+MONTHS_SHORT.map((lbl,i)=>{
+    const paid=isMonthPaid(currentYear,i);
+    const closed=isMonthClosed(currentYear,i);
+    const txs=getMonthTxs(currentYear,i);
+    const active=(i===currentMonth);
+    let state='open-empty';
+    if(paid) state='paid';
+    else if(closed) state='closed';
+    else if(txs.length) state='open-has';
+    return `<button class="hm-cell hm-${state}${active?' hm-active':''}" title="${MONTHS[i]} ${currentYear}${paid?' · Paga':closed?' · Fechada':txs.length?' · '+txs.length+' lançamentos':' · Aberta'}" onclick="goToMonth(${currentYear},${i})">${lbl}</button>`;
+  }).join('');
+}
+
+
+// ── CLOSE INVOICE (bloqueia novos lançamentos) ──
 function openPayModal(){
   const txs=getCurrentTxs();
   const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('pay-modal-title').textContent=`Fechar ${MONTHS[currentMonth]}?`;
+  document.getElementById('pay-modal-title').textContent=`Fechar fatura de ${MONTHS[currentMonth]}?`;
   document.getElementById('pay-modal-sub').innerHTML=`<strong style="color:var(--text)">${MONTHS[currentMonth]} ${currentYear}</strong><br>Receitas: <span style="color:var(--green)">${fmt(income)}</span> · Despesas: <span style="color:var(--red)">${fmt(expense)}</span><br>Saldo: <span style="color:${income-expense>=0?'var(--green)':'var(--red)'}">${fmt(income-expense)}</span>`;
   document.getElementById('pay-modal').classList.remove('hidden');
 }
 function closePayModal(){document.getElementById('pay-modal').classList.add('hidden');}
-function confirmPayMonth(){if(!paidMonths.includes(currentKey()))paidMonths.push(currentKey());markUnsaved();closePayModal();render();}
-function openUnlockModal(){document.getElementById('unlock-modal-sub').textContent=`Tem certeza que deseja reabrir ${MONTHS[currentMonth]} ${currentYear}?`;document.getElementById('unlock-modal').classList.remove('hidden');}
+function confirmPayMonth(){
+  // "Fechar fatura" agora apenas fecha (bloqueia novos lançamentos)
+  const k=currentKey();
+  if(!closedMonths.includes(k)) closedMonths.push(k);
+  markUnsaved();closePayModal();render();
+}
+
+// ── MARK INVOICE AS PAID ──
+function openPayInvoiceModal(){
+  const txs=getCurrentTxs();
+  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('pay-invoice-modal-sub').innerHTML=`<strong style="color:var(--text)">${MONTHS[currentMonth]} ${currentYear}</strong><br>Total da fatura: <span style="color:var(--red)">${fmt(expense)}</span>`;
+  document.getElementById('pay-invoice-modal').classList.remove('hidden');
+}
+function closePayInvoiceModal(){document.getElementById('pay-invoice-modal').classList.add('hidden');}
+function confirmPayInvoice(){
+  const k=currentKey();
+  if(!paidMonths.includes(k)) paidMonths.push(k);
+  // Uma fatura paga também está fechada
+  if(!closedMonths.includes(k)) closedMonths.push(k);
+  markUnsaved();closePayInvoiceModal();render();
+}
+
+function openUnlockModal(){
+  const paid=isCurrentPaid();
+  const msg=paid
+    ?`Reabrir fatura paga de ${MONTHS[currentMonth]} ${currentYear}? Ela voltará ao estado "fechada" (não-paga).`
+    :`Reabrir fatura de ${MONTHS[currentMonth]} ${currentYear}? Novos lançamentos voltarão a ser aceitos.`;
+  document.getElementById('unlock-modal-sub').textContent=msg;
+  document.getElementById('unlock-modal').classList.remove('hidden');
+}
 function closeUnlockModal(){document.getElementById('unlock-modal').classList.add('hidden');}
-function confirmUnlock(){paidMonths=paidMonths.filter(k=>k!==currentKey());markUnsaved();closeUnlockModal();render();}
+function confirmUnlock(){
+  const k=currentKey();
+  if(isCurrentPaid()){
+    // Pago → fechada (não-paga)
+    paidMonths=paidMonths.filter(x=>x!==k);
+  } else {
+    // Fechada → aberta
+    closedMonths=closedMonths.filter(x=>x!==k);
+  }
+  markUnsaved();closeUnlockModal();render();
+}
 
 // ── PAGES ──
 function showPage(name,el,bnav){
@@ -415,22 +606,23 @@ function renderHistory(){
   const monthSet=new Set();
   transactions.forEach(t=>{const d=new Date(t.date+'T12:00:00');monthSet.add(d.getFullYear()+'-'+d.getMonth());});
   paidMonths.forEach(k=>{const p=k.split('-');monthSet.add(parseInt(p[0])+'-'+(parseInt(p[1])-1));});
+  closedMonths.forEach(k=>{const p=k.split('-');monthSet.add(parseInt(p[0])+'-'+(parseInt(p[1])-1));});
   // Also include current viewed month
   monthSet.add(currentYear+'-'+currentMonth);
   const entries=[];
   monthSet.forEach(key=>{
     const [y,m]=[parseInt(key.split('-')[0]),parseInt(key.split('-')[1])];
     const txs=getMonthTxs(y,m);
-    if(!txs.length&&!isMonthPaid(y,m)) return;
+    if(!txs.length&&!isMonthPaid(y,m)&&!isMonthClosed(y,m)) return;
     const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    entries.push({y,m,inc,exp,bal:inc-exp,paid:isMonthPaid(y,m),txCount:txs.length});
+    entries.push({y,m,inc,exp,bal:inc-exp,paid:isMonthPaid(y,m),closed:isMonthClosed(y,m),txCount:txs.length});
   });
   entries.sort((a,b)=>(b.y*12+b.m)-(a.y*12+a.m));
   if(!entries.length){grid.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div>Nenhum histórico ainda</div></div>';return;}
   grid.innerHTML=entries.map(e=>`
     <div class="hist-card${e.paid?' paid-card':''}" onclick="goToMonth(${e.y},${e.m})">
-      <div class="hist-month"><span>${MONTHS_SHORT[e.m]} ${e.y}</span>${e.paid?`<span class="paid-badge" style="font-size:11px;padding:3px 8px"><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Pago</span>`:`<span style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:20px;padding:3px 8px">Aberto</span>`}</div>
+      <div class="hist-month"><span>${MONTHS_SHORT[e.m]} ${e.y}</span>${e.paid?`<span class="paid-badge" style="font-size:11px;padding:3px 8px"><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Pago</span>`:e.closed?`<span style="font-size:11px;color:var(--text2);background:var(--surface2);border-radius:20px;padding:3px 8px">📋 Fechada</span>`:`<span style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:20px;padding:3px 8px">Aberta</span>`}</div>
       <div class="hist-row"><span class="hist-label">Receitas</span><span style="color:var(--green);font-family:var(--font-heading)">${fmt(e.inc)}</span></div>
       <div class="hist-row"><span class="hist-label">Despesas</span><span style="color:var(--red);font-family:var(--font-heading)">${fmt(e.exp)}</span></div>
       <div style="height:1px;background:var(--border);margin:8px 0"></div>
@@ -572,7 +764,8 @@ function renderPeople(){
 
 // ── CHARTS ──
 function renderCharts(){
-  Chart.defaults.color='#9b99b0';Chart.defaults.font={family:"'DM Sans',sans-serif",size:12};
+  const cssVar=(n)=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  Chart.defaults.color=cssVar('--text2')||'#9b99b0';Chart.defaults.font={family:"'DM Sans',sans-serif",size:12};
 
   const labels=[],incData=[],expData=[];
   for(let i=5;i>=0;i--){let m=currentMonth-i,y=currentYear;if(m<0){m+=12;y--;}labels.push(MONTHS_SHORT[m]);const txs=getMonthTxs(y,m);incData.push(txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0));expData.push(txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));}
@@ -685,7 +878,12 @@ function updateParcelaHint(){
 }
 
 function openForm(tx,recurMode=false,recurTx=null){
-  if(!recurMode&&isCurrentPaid()){alert('Este mês está fechado. Reabra o mês para adicionar transações.');return;}
+  if(!recurMode&&isCurrentPaid()){alert('Esta fatura está paga. Reabra para adicionar transações.');return;}
+  if(!recurMode&&isCurrentClosed()){
+    const nxt=nextOpenInvoiceKey(currentYear,currentMonth);
+    const [ny,nm]=nxt.split('-');
+    showRollToast(`Fatura fechada — lançamento irá para ${MONTHS_SHORT[parseInt(nm)-1]}/${ny}`);
+  }
   isRecurringForm=recurMode; editingRecurId=recurTx?recurTx.id:null;
   document.getElementById('form-title').textContent=recurMode?'Transação recorrente':'Nova transação';
   document.getElementById('f-date-group').style.display=recurMode?'none':'block';
@@ -771,29 +969,37 @@ function saveTransaction(){
   const editId=document.getElementById('overlay').dataset.editId;
 
   if(editId){
-    // Editing existing transaction — just update fields
+    // Editing existing transaction — preserve invoiceKey (fatura não muda quando só edita dados)
     const idx=transactions.findIndex(t=>String(t.id)===String(editId));
-    if(idx>-1) transactions[idx]={...transactions[idx],desc,amount,type:formType,category,date,respId:selectedResp,note:note||undefined};
+    if(idx>-1){
+      const prev=transactions[idx];
+      const prevKey=getTxInvoiceKey(prev);
+      transactions[idx]={...prev,desc,amount,type:formType,category,date,respId:selectedResp,note:note||undefined,invoiceKey:prev.invoiceKey||prevKey};
+    }
   } else {
-    // New transaction
+    // New transaction — fatura é a próxima aberta a partir da data
+    const invKey=resolveInvoiceForDate(date);
     if(recurType==='installment'){
       const totalParcelas=parseInt(document.getElementById('f-parcelas').value)||2;
       if(totalParcelas<2){alert('O número de parcelas deve ser pelo menos 2.');return;}
+      // Start month baseado na data informada (mês real da compra)
+      const dd=new Date(date+'T12:00:00');
+      const sY=dd.getFullYear(), sM=dd.getMonth();
       const nr={
         id:'rec'+Date.now(),
         desc,amount,type:formType,category,respId:selectedResp,
         isInstallment:true,
         totalInstallments:totalParcelas,
-        startYear:currentYear,
-        startMonth:currentMonth
+        startYear:sY,
+        startMonth:sM
       };
       recurring.push(nr);
-      // First installment in current viewed month
-      const startM=String(currentMonth+1).padStart(2,'0');
+      const startM=String(sM+1).padStart(2,'0');
       transactions.push({
         id:'tx'+Date.now(),
         desc,amount,type:formType,category,
-        date:`${currentYear}-${startM}-01`,
+        date:`${sY}-${startM}-01`,
+        invoiceKey:invKey,
         recurId:nr.id,respId:selectedResp,
         installmentNum:1,
         totalInstallments:totalParcelas
@@ -801,9 +1007,9 @@ function saveTransaction(){
     } else if(recurType==='infinite'){
       const nr={id:'rec'+Date.now(),desc,amount,type:formType,category,respId:selectedResp,isInstallment:false};
       recurring.push(nr);
-      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,recurId:nr.id,respId:selectedResp,note:note||undefined});
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,invoiceKey:invKey,recurId:nr.id,respId:selectedResp,note:note||undefined});
     } else {
-      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,respId:selectedResp,note:note||undefined});
+      transactions.push({id:'tx'+Date.now(),desc,amount,type:formType,category,date,invoiceKey:invKey,respId:selectedResp,note:note||undefined});
     }
   }
 
@@ -820,14 +1026,14 @@ function toggleTxPaid(id){
 }
 
 function deleteTx(id){
-  if(isCurrentPaid())return;
+  if(isCurrentPaid()) return;
   const tx=findTx(id);
   if(!tx) return;
   pendingDeleteId=id;
   document.getElementById('delete-modal-sub').innerHTML=`<strong>"${escHtml(tx.desc)}"</strong><br>${tx.type==='income'?'+':'-'}${fmt(tx.amount)} · ${tx.date.slice(8,10)}/${tx.date.slice(5,7)}/${tx.date.slice(0,4)}`;
   document.getElementById('delete-modal').classList.remove('hidden');
 }
-function closeDeleteModal(){document.getElementById('delete-modal').classList.add('hidden');pendingDeleteId=null;}
+function closeDeleteModal(){const m=document.getElementById('delete-modal');if(m)m.classList.add('hidden');pendingDeleteId=null;}
 function confirmDelete(){
   if(pendingDeleteId){
     transactions=transactions.filter(t=>String(t.id)!==String(pendingDeleteId));
@@ -886,7 +1092,7 @@ function renderAnnual(){
     const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     yearInc+=inc;yearExp+=exp;
-    monthData.push({m,inc,exp,bal:inc-exp,count:txs.length,paid:isMonthPaid(annualYear,m)});
+    monthData.push({m,inc,exp,bal:inc-exp,count:txs.length,paid:isMonthPaid(annualYear,m),closed:isMonthClosed(annualYear,m)});
   }
   const yearBal=yearInc-yearExp;
   const activeMonths=monthData.filter(d=>d.count>0).length;
@@ -911,7 +1117,7 @@ function renderAnnual(){
       <td style="color:var(--red);font-family:var(--font-heading)">${d.exp?fmt(d.exp):'—'}</td>
       <td style="color:${d.bal>=0?'var(--green)':'var(--red)'};font-family:var(--font-heading);font-weight:600">${d.count?fmt(d.bal):'—'}</td>
       <td>${d.count||'—'}</td>
-      <td>${d.paid?'<span style="color:var(--green);font-size:11px">✓ Fechado</span>':d.count?'<span style="color:var(--text3);font-size:11px">Aberto</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+      <td>${d.paid?'<span style="color:var(--green);font-size:11px">✓ Pago</span>':d.closed?'<span style="color:var(--text2);font-size:11px">📋 Fechada</span>':d.count?'<span style="color:var(--text3);font-size:11px">Aberta</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
     </tr>`).join('')}
     <tr style="border-top:2px solid var(--border2);font-weight:700">
       <td>Total</td>
@@ -1176,8 +1382,150 @@ document.getElementById('overlay').addEventListener('click',function(e){if(e.tar
 document.getElementById('inv-form-overlay').addEventListener('click',function(e){if(e.target===this)closeInvForm();});
 document.getElementById('inv-op-overlay').addEventListener('click',function(e){if(e.target===this)closeInvOp();});
 document.getElementById('inv-detail-overlay').addEventListener('click',function(e){if(e.target===this)closeInvDetail();});
-document.getElementById('ofx-overlay').addEventListener('click',function(e){if(e.target===this)closeOfxImport();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();closeMoreMenu();closeOfxImport();}});
+document.getElementById('bulk-overlay').addEventListener('click',function(e){if(e.target===this)closeBulkEntry();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePayModal();closePayInvoiceModal();closeUnlockModal();closeDeleteModal();closeBudgetModal();closeForm();closeInvForm();closeInvOp();closeInvDetail();closeMoreMenu();closeBulkEntry();closeShortcutsHelp();closeMonthPicker();}});
+document.addEventListener('keydown',e=>{
+  // Ignorar quando digitando em input/textarea/select
+  const tag=(e.target&&e.target.tagName)||'';
+  if(['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(document.getElementById('app-screen').style.display==='none') return;
+  // Bloquear se algum modal aberto
+  const anyOpen=document.querySelector('.modal-overlay:not(.hidden), .overlay:not(.hidden)');
+  if(anyOpen) return;
+  const k=e.key.toLowerCase();
+  if(k==='n'){e.preventDefault();openForm();}
+  else if(k==='m'){e.preventDefault();openBulkEntry();}
+  else if(k==='/'){e.preventDefault();const s=document.getElementById('tx-search');if(s){s.focus();s.select();}}
+  else if(e.key==='ArrowLeft'){changeMonth(-1);}
+  else if(e.key==='ArrowRight'){changeMonth(1);}
+  else if(k==='?'){e.preventDefault();openShortcutsHelp();}
+});
+
+function openShortcutsHelp(){document.getElementById('shortcuts-modal').classList.remove('hidden');}
+function closeShortcutsHelp(){const m=document.getElementById('shortcuts-modal');if(m)m.classList.add('hidden');}
+
+// ── MONTH/YEAR PICKER ──
+let pickerYear=null;
+function openMonthPicker(){
+  pickerYear=currentYear;
+  renderMonthPicker();
+  document.getElementById('month-picker').classList.remove('hidden');
+}
+function closeMonthPicker(){const m=document.getElementById('month-picker');if(m)m.classList.add('hidden');}
+function changeMpYear(d){pickerYear+=d;renderMonthPicker();}
+function pickerToToday(){const d=new Date();currentYear=d.getFullYear();currentMonth=d.getMonth();closeMonthPicker();applyRecurrences();render();}
+function renderMonthPicker(){
+  document.getElementById('mp-year').textContent=pickerYear;
+  const grid=document.getElementById('mp-grid');
+  grid.innerHTML=MONTHS_SHORT.map((lbl,i)=>{
+    const active=(i===currentMonth&&pickerYear===currentYear);
+    const paid=isMonthPaid(pickerYear,i);
+    const closed=isMonthClosed(pickerYear,i);
+    const hasTxs=transactions.some(t=>{const k=getTxInvoiceKey(t);return k===monthKey(pickerYear,i);});
+    let dotColor='';
+    if(paid) dotColor='var(--green)';
+    else if(closed) dotColor='var(--amber)';
+    else if(hasTxs) dotColor='var(--accent)';
+    const dot=dotColor?`<span class="mp-dot" style="background:${dotColor}"></span>`:'';
+    return `<button class="mp-month${active?' active':''}" onclick="pickerPickMonth(${i})">${lbl}${dot}</button>`;
+  }).join('');
+}
+function pickerPickMonth(m){
+  currentYear=pickerYear;
+  currentMonth=m;
+  closeMonthPicker();
+  applyRecurrences();
+  render();
+}
+
+// ── SETTINGS (closeDay/dueDay) ──
+function openSettings(){
+  document.getElementById('cfg-close-day').value=settings.closeDay||'';
+  document.getElementById('cfg-due-day').value=settings.dueDay||'';
+  document.getElementById('cfg-auto-close').checked=!!settings.autoClose;
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings(){const m=document.getElementById('settings-modal');if(m)m.classList.add('hidden');}
+function stepCfg(id,delta){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const cur=parseInt(el.value);
+  let v=(isNaN(cur)?1:cur)+delta;
+  if(v<1) v=1; else if(v>31) v=31;
+  el.value=v;
+}
+function saveSettings(){
+  const cd=parseInt(document.getElementById('cfg-close-day').value);
+  const dd=parseInt(document.getElementById('cfg-due-day').value);
+  settings.closeDay=(cd>=1&&cd<=31)?cd:null;
+  settings.dueDay=(dd>=1&&dd<=31)?dd:null;
+  settings.autoClose=document.getElementById('cfg-auto-close').checked;
+  markUnsaved();
+  closeSettings();
+  runAutoClose();
+  render();
+  maybeShowDueBanner();
+}
+
+// Fecha automaticamente faturas de meses já passados (após o dia de fechamento)
+function runAutoClose(){
+  if(!settings.autoClose||!settings.closeDay) return;
+  const today=new Date();
+  const ty=today.getFullYear(), tm=today.getMonth(), td=today.getDate();
+  let changed=false;
+  // Percorre todos os meses com transações
+  const monthSet=new Set();
+  transactions.forEach(t=>{
+    const k=getTxInvoiceKey(t);
+    monthSet.add(k);
+  });
+  monthSet.forEach(key=>{
+    const [y,m]=key.split('-').map(Number);
+    const mi=m-1;
+    // Mês totalmente no passado: fecha se não estiver pago/fechado
+    const isPast=(y<ty)||(y===ty&&mi<tm);
+    // Mês atual: só fecha se passou do dia de fechamento
+    const isCurrentMonthClosed=(y===ty&&mi===tm&&td>settings.closeDay);
+    if((isPast||isCurrentMonthClosed)&&!isMonthPaid(y,mi)&&!isMonthClosed(y,mi)){
+      closedMonths.push(key);
+      changed=true;
+    }
+  });
+  if(changed) saveToLS();
+}
+
+// Banner de vencimento próximo
+function maybeShowDueBanner(){
+  const el=document.getElementById('due-banner');
+  if(!el) return;
+  if(!settings.dueDay){el.style.display='none';return;}
+  const today=new Date();
+  // Checa faturas fechadas (não pagas) cujo vencimento é próximo
+  const closedKeys=closedMonths.filter(k=>!paidMonths.includes(k));
+  let closestMsg=null, mostUrgent=999;
+  closedKeys.forEach(key=>{
+    const [y,m]=key.split('-').map(Number);
+    // Data de vencimento: dueDay do mês seguinte ao fechamento (padrão cartão)
+    let dy=y, dm=m;
+    dm++;
+    if(dm>12){dm=1;dy++;}
+    const dueDate=new Date(dy,dm-1,settings.dueDay);
+    const diffDays=Math.ceil((dueDate-today)/(1000*60*60*24));
+    if(diffDays>=-1&&diffDays<=3&&diffDays<mostUrgent){
+      mostUrgent=diffDays;
+      const total=transactions.filter(t=>getTxInvoiceKey(t)===key&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const when=diffDays<0?'venceu ontem':diffDays===0?'vence hoje':diffDays===1?'vence amanhã':`vence em ${diffDays} dias`;
+      closestMsg=`💸 Fatura de ${MONTHS_SHORT[m-1]}/${y} ${when} · ${fmt(total)}`;
+    }
+  });
+  if(closestMsg){
+    el.innerHTML=`<span>${closestMsg}</span><button class="backup-banner-btn" onclick="openPayInvoiceModal()">Pagar</button><button class="backup-banner-close" onclick="document.getElementById('due-banner').style.display='none'" title="Dispensar">✕</button>`;
+    el.style.display='flex';
+  } else {
+    el.style.display='none';
+  }
+}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&document.getElementById('app-screen').style.display!=='none'){e.preventDefault();saveToFile();}});
 
 // Init money input formatters
@@ -1185,7 +1533,7 @@ initMoneyInputs();
 // Update hint when amount changes
 document.getElementById('f-amount').addEventListener('moneychange',()=>{if(recurType==='installment')updateParcelaHint();});
 
-// ── OFX IMPORT ──
+// ── BULK ENTRY (tabela inline estilo planilha) ──
 const AUTO_CAT_MAP=[
   // Transporte
   {kw:['uber','99 ','lyft','cabify','taxi','táxi','estacionamento','combustivel','combustível','gasolina','etanol','posto','pedagio','pedágio','sem parar'],cat:'transporte'},
@@ -1217,97 +1565,64 @@ const AUTO_CAT_MAP=[
   {kw:['rendimento','dividendo','juros','cashback','reembolso','estorno','devolução','devoluçao'],cat:'outras receitas'},
 ];
 
-let ofxParsedTxs=[];
+let bulkRows=[];
+const BULK_FIELDS=['date','desc','parcela','valor','type','respId'];
 
-function triggerOfxInput(){
-  if(isCurrentPaid()){alert('Este mês está fechado. Reabra para importar.');return;}
-  document.getElementById('ofx-input').click();
-}
+function emptyBulkRow(){return {date:'',desc:'',parcela:'',valor:'',type:'expense',respId:''}}
 
-function detectOfxEncoding(buffer){
-  // Muitos bancos BR declaram USASCII/1252 no header mas gravam UTF-8.
-  // Estratégia: tentar UTF-8 primeiro (sem erros = é UTF-8 válido).
-  try{
-    const utf8=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
-    // Se decodificou sem erro, é UTF-8
-    return 'utf-8';
-  }catch(e){}
-  // Não é UTF-8 válido — usar header do OFX para decidir
-  const header=new TextDecoder('ascii').decode(buffer.slice(0,1024));
-  const charsetMatch=header.match(/CHARSET:\s*(\S+)/i);
-  const charset=(charsetMatch?charsetMatch[1]:'').toUpperCase();
-  if(charset.includes('8859')) return 'iso-8859-1';
-  // Fallback: windows-1252 (superset de latin1)
-  return 'windows-1252';
-}
-
-function handleOfxFile(e){
-  const file=e.target.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      const buffer=ev.target.result;
-      const enc=detectOfxEncoding(buffer);
-      const raw=new TextDecoder(enc).decode(buffer);
-      const txs=parseOfx(raw);
-      if(!txs.length){alert('Nenhuma transação encontrada no arquivo OFX.');return;}
-      showOfxPreview(txs);
-    }catch(err){
-      alert('Erro ao processar o arquivo OFX. Verifique se o formato é válido.');
-      console.error(err);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-  e.target.value='';
-}
-
-function parseOfx(raw){
-  const txs=[];
-  // Encontrar todas as transações (STMTTRN blocks)
-  const regex=/<STMTTRN>([\s\S]*?)(<\/STMTTRN>|(?=<STMTTRN>|<\/BANKTRANLIST))/gi;
-  let match;
-  while((match=regex.exec(raw))!==null){
-    const block=match[1];
-    const get=tag=>{
-      // OFX pode ser SGML (sem fechamento) ou XML (com fechamento)
-      const r=new RegExp('<'+tag+'>\\s*([^<\\r\\n]+)','i');
-      const m=block.match(r);
-      return m?m[1].trim():'';
-    };
-    const trnType=get('TRNTYPE');
-    const dateRaw=get('DTPOSTED');
-    const amountRaw=get('TRNAMT');
-    const memo=get('MEMO')||get('NAME')||'Sem descrição';
-    const fitid=get('FITID');
-    if(!amountRaw||!dateRaw) continue;
-    // Parse date: YYYYMMDD or YYYYMMDDHHMMSS
-    const year=dateRaw.slice(0,4);
-    const month=dateRaw.slice(4,6);
-    const day=dateRaw.slice(6,8);
-    const date=`${year}-${month}-${day}`;
-    // Parse amount (pode ter ponto ou vírgula)
-    const amount=parseFloat(amountRaw.replace(',','.'));
-    if(isNaN(amount)) continue;
-    const isIncome=amount>0;
-    const absAmount=Math.abs(amount);
-    // Auto-categorização
-    const cat=detectCategory(memo,isIncome);
-    // Detecção de duplicata
-    const dup=isDuplicateTx(date,absAmount,memo);
-    txs.push({
-      fitid,date,desc:memo,amount:absAmount,
-      type:isIncome?'income':'expense',
-      category:cat,selected:!dup,isDuplicate:dup
-    });
+function openBulkEntry(){
+  if(isCurrentPaid()){alert('Esta fatura está paga. Reabra para lançar.');return;}
+  if(isCurrentClosed()){
+    const nxt=nextOpenInvoiceKey(currentYear,currentMonth);
+    const [ny,nm]=nxt.split('-');
+    showRollToast(`Fatura fechada — lançamentos irão para ${MONTHS_SHORT[parseInt(nm)-1]}/${ny}`);
   }
-  // Ordenar por data desc
-  txs.sort((a,b)=>b.date.localeCompare(a.date));
-  return txs;
+  bulkRows=Array.from({length:5},()=>emptyBulkRow());
+  renderBulkTable();
+  document.getElementById('bulk-overlay').classList.remove('hidden');
+}
+
+function closeBulkEntry(){
+  document.getElementById('bulk-overlay').classList.add('hidden');
+  bulkRows=[];
+}
+
+function addBulkRow(){bulkRows.push(emptyBulkRow());renderBulkTable();}
+function removeBulkRow(i){bulkRows.splice(i,1);if(!bulkRows.length)bulkRows.push(emptyBulkRow());renderBulkTable();}
+
+function normalizeDateInput(s){
+  s=(s||'').trim();
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(m) return `20${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  return '';
+}
+
+function parseAmountInput(s){
+  s=(s||'').trim().replace(/[^\d.,-]/g,'');
+  if(!s) return NaN;
+  if(s.indexOf(',')>=0) return parseFloat(s.replace(/\./g,'').replace(',','.'));
+  return parseFloat(s);
+}
+
+function parseTypeInput(s){
+  s=(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  if(s.startsWith('rec')||s==='income'||s==='r'||s==='i'||s==='+') return 'income';
+  return 'expense';
+}
+
+function matchRespId(s){
+  s=(s||'').trim();
+  if(!s) return '';
+  const r=responsibles.find(x=>x.name.toLowerCase().trim()===s.toLowerCase());
+  return r?r.id:'';
 }
 
 function detectCategory(memo,isIncome){
-  const lower=memo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const lower=(memo||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   for(const rule of AUTO_CAT_MAP){
     for(const kw of rule.kw){
       const kwNorm=kw.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -1321,7 +1636,6 @@ function isDuplicateTx(date,amount,desc){
   return transactions.some(t=>{
     if(t.date!==date) return false;
     if(Math.abs(t.amount-amount)>0.01) return false;
-    // Comparar descrição de forma flexível
     const a=t.desc.toLowerCase().trim();
     const b=desc.toLowerCase().trim();
     if(a===b) return true;
@@ -1330,84 +1644,244 @@ function isDuplicateTx(date,amount,desc){
   });
 }
 
-function showOfxPreview(txs){
-  ofxParsedTxs=txs;
-  const incomeCount=txs.filter(t=>t.type==='income').length;
-  const expenseCount=txs.filter(t=>t.type==='expense').length;
-  const dupCount=txs.filter(t=>t.isDuplicate).length;
-  const totalIncome=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const totalExpense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-
-  document.getElementById('ofx-summary').innerHTML=`
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Transações</div><div class="card-value" style="font-size:18px">${txs.length}</div><div class="card-sub">${incomeCount} receitas · ${expenseCount} despesas</div></div>
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Receitas</div><div class="card-value" style="font-size:18px;color:var(--green)">${fmt(totalIncome)}</div></div>
-      <div class="card" style="flex:1;min-width:120px"><div class="card-label">Despesas</div><div class="card-value" style="font-size:18px;color:var(--red)">${fmt(totalExpense)}</div></div>
-    </div>
-    ${dupCount?`<div class="alert-banner" style="margin-top:10px"><span class="alert-banner-icon">⚠️</span><span class="alert-banner-text">${dupCount} possível${dupCount>1?'is':''} duplicata${dupCount>1?'s':''} detectada${dupCount>1?'s':''} (desmarcadas automaticamente)</span></div>`:''}
-  `;
-
-  const catOptions=Object.keys(CAT_ICONS).map(c=>`<option value="${c}">${CAT_ICONS[c]} ${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
-
-  document.getElementById('ofx-list').innerHTML=txs.map((t,i)=>`
-    <div class="ofx-item${t.isDuplicate?' ofx-dup':''}" data-idx="${i}">
-      <input type="checkbox" ${t.selected?'checked':''} onchange="ofxParsedTxs[${i}].selected=this.checked;updateOfxCount()"/>
-      <div class="ofx-item-info">
-        <div class="ofx-item-desc">${escHtml(t.desc)}${t.isDuplicate?'<span class="ofx-dup-badge">duplicata</span>':''}</div>
-        <div class="ofx-item-date">${t.date.slice(8,10)}/${t.date.slice(5,7)}/${t.date.slice(0,4)}</div>
-      </div>
-      <div class="ofx-item-amount" style="color:${t.type==='income'?'var(--green)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
-      <select class="ofx-item-cat" onchange="ofxParsedTxs[${i}].category=this.value">${catOptions.replace(`value="${t.category}"`,`value="${t.category}" selected`)}</select>
-    </div>
+function renderBulkTable(){
+  const tbody=document.getElementById('bulk-tbody');
+  const respOpts='<option value="">—</option>'+responsibles.map(r=>`<option value="${r.id}">${escHtml(r.name)}</option>`).join('');
+  tbody.innerHTML=bulkRows.map((r,i)=>`
+    <tr>
+      <td style="width:28px;text-align:center;color:var(--text3);font-size:11px">${i+1}</td>
+      <td><input type="text" class="bulk-in bulk-date" data-row="${i}" data-field="date" value="${escHtml(r.date||'')}" placeholder="DD/MM/AAAA" style="width:110px"/></td>
+      <td><input type="text" class="bulk-in" data-row="${i}" data-field="desc" value="${escHtml(r.desc||'')}" placeholder="Descrição"/></td>
+      <td><input type="text" class="bulk-in" data-row="${i}" data-field="parcela" value="${escHtml(r.parcela||'')}" placeholder="1/12" style="width:60px"/></td>
+      <td><input type="text" class="bulk-in money-input" data-row="${i}" data-field="valor" value="${escHtml(r.valor||'')}" placeholder="R$ 0,00" style="width:110px;text-align:right"/></td>
+      <td><select class="bulk-in" data-row="${i}" data-field="type"><option value="expense"${r.type==='expense'?' selected':''}>Despesa</option><option value="income"${r.type==='income'?' selected':''}>Receita</option></select></td>
+      <td><select class="bulk-in" data-row="${i}" data-field="respId">${respOpts.replace(`value="${r.respId}"`,`value="${r.respId}" selected`)}</select></td>
+      <td><button class="bulk-del" onclick="removeBulkRow(${i})" title="Remover linha">✕</button></td>
+    </tr>
   `).join('');
-
-  document.getElementById('ofx-select-all').checked=txs.some(t=>t.selected);
-  updateOfxCount();
-  document.getElementById('ofx-overlay').classList.remove('hidden');
-}
-
-function toggleOfxSelectAll(){
-  const checked=document.getElementById('ofx-select-all').checked;
-  ofxParsedTxs.forEach(t=>t.selected=checked);
-  document.querySelectorAll('#ofx-list input[type="checkbox"]').forEach(cb=>cb.checked=checked);
-  updateOfxCount();
-}
-
-function updateOfxCount(){
-  const count=ofxParsedTxs.filter(t=>t.selected).length;
-  document.getElementById('ofx-selected-count').textContent=`${count} de ${ofxParsedTxs.length} selecionadas`;
-  document.getElementById('ofx-import-btn').textContent=`Importar ${count} transação${count!==1?'ões':''}`;
-}
-
-function closeOfxImport(){
-  document.getElementById('ofx-overlay').classList.add('hidden');
-  ofxParsedTxs=[];
-}
-
-function confirmOfxImport(){
-  const selected=ofxParsedTxs.filter(t=>t.selected);
-  if(!selected.length){alert('Selecione pelo menos uma transação para importar.');return;}
-  let imported=0;
-  selected.forEach(t=>{
-    transactions.push({
-      id:'tx'+Date.now()+Math.random(),
-      desc:t.desc,
-      amount:t.amount,
-      type:t.type,
-      category:t.category,
-      date:t.date,
-      respId:null,
-      note:'Importado via OFX'
+  // Mirror mobile cards
+  const mob=document.getElementById('bulk-mobile');
+  if(mob){
+    mob.innerHTML=bulkRows.map((r,i)=>`
+      <div class="bulk-mcard">
+        <button class="bulk-del" onclick="removeBulkRow(${i})" title="Remover">✕</button>
+        <div class="bulk-mnum">#${i+1}</div>
+        <div class="bulk-mrow">
+          <div class="bulk-mfield" style="min-width:100%"><label>Descrição</label><input type="text" class="bulk-in" data-row="${i}" data-field="desc" value="${escHtml(r.desc||'')}" placeholder="Descrição"/></div>
+        </div>
+        <div class="bulk-mrow">
+          <div class="bulk-mfield"><label>Data</label><input type="text" class="bulk-in bulk-date" data-row="${i}" data-field="date" value="${escHtml(r.date||'')}" placeholder="DD/MM/AAAA"/></div>
+          <div class="bulk-mfield"><label>Valor</label><input type="text" class="bulk-in money-input" data-row="${i}" data-field="valor" value="${escHtml(r.valor||'')}" placeholder="R$ 0,00"/></div>
+        </div>
+        <div class="bulk-mrow">
+          <div class="bulk-mfield"><label>Parcela</label><input type="text" class="bulk-in" data-row="${i}" data-field="parcela" value="${escHtml(r.parcela||'')}" placeholder="3/12"/></div>
+          <div class="bulk-mfield"><label>Tipo</label><select class="bulk-in" data-row="${i}" data-field="type"><option value="expense"${r.type==='expense'?' selected':''}>Despesa</option><option value="income"${r.type==='income'?' selected':''}>Receita</option></select></div>
+        </div>
+        <div class="bulk-mrow">
+          <div class="bulk-mfield" style="min-width:100%"><label>Responsável</label><select class="bulk-in" data-row="${i}" data-field="respId">${respOpts.replace(`value="${r.respId}"`,`value="${r.respId}" selected`)}</select></div>
+        </div>
+      </div>
+    `).join('');
+  }
+  initMoneyInputs();
+  const allInputs=document.querySelectorAll('#bulk-tbody .bulk-in, #bulk-mobile .bulk-in');
+  allInputs.forEach(el=>{
+    el.addEventListener('input',e=>{bulkRows[+e.target.dataset.row][e.target.dataset.field]=e.target.value;});
+    el.addEventListener('change',e=>{bulkRows[+e.target.dataset.row][e.target.dataset.field]=e.target.value;});
+    el.addEventListener('paste',handleBulkPaste);
+  });
+  document.querySelectorAll('#bulk-tbody .bulk-date, #bulk-mobile .bulk-date').forEach(el=>{
+    el.addEventListener('blur',e=>{
+      const norm=normalizeDateInput(e.target.value);
+      if(norm){
+        bulkRows[+e.target.dataset.row].date=norm;
+        e.target.value=norm;
+      }
     });
+  });
+  updateBulkCount();
+}
+
+function handleBulkPaste(e){
+  const target=e.target;
+  const cd=e.clipboardData||window.clipboardData;
+  if(!cd) return;
+  const text=cd.getData('text');
+  if(!text||(!text.includes('\t')&&!text.includes('\n'))) return;
+  e.preventDefault();
+  const rowIdx=parseInt(target.dataset.row);
+  const fieldIdx=BULK_FIELDS.indexOf(target.dataset.field);
+  if(fieldIdx<0) return;
+  const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.length);
+  lines.forEach((line,ri)=>{
+    const cells=line.split('\t');
+    const ti=rowIdx+ri;
+    while(bulkRows.length<=ti) bulkRows.push(emptyBulkRow());
+    cells.forEach((raw,ci)=>{
+      const f=BULK_FIELDS[fieldIdx+ci];
+      if(!f) return;
+      const val=(raw||'').trim();
+      if(f==='date'){bulkRows[ti][f]=normalizeDateInput(val);}
+      else if(f==='type'){bulkRows[ti][f]=parseTypeInput(val);}
+      else if(f==='respId'){bulkRows[ti][f]=matchRespId(val);}
+      else if(f==='valor'){bulkRows[ti][f]=val?formatMoneyInput(val):'';}
+      else{bulkRows[ti][f]=val;}
+    });
+  });
+  renderBulkTable();
+}
+
+function updateBulkCount(){
+  const filled=bulkRows.filter(r=>r.desc||r.valor||r.date).length;
+  const el=document.getElementById('bulk-count');
+  if(el) el.textContent=`${filled} linha${filled!==1?'s':''} preenchida${filled!==1?'s':''}`;
+  const btn=document.getElementById('bulk-import-btn');
+  if(btn) btn.textContent=`Importar ${filled} lançamento${filled!==1?'s':''}`;
+}
+
+function findOrCreateInstallmentRecur(t){
+  const normDesc=t.desc.toLowerCase().trim();
+  let match=recurring.find(r=>r.isInstallment
+    &&r.totalInstallments===t.totalInstallments
+    &&r.desc.toLowerCase().trim()===normDesc);
+  if(match) return match;
+  // Inferir startYear/startMonth a partir da data e do número da parcela atual
+  const d=new Date(t.date+'T12:00:00');
+  const sDate=new Date(d.getFullYear(),d.getMonth()-(t.installmentNum-1),1);
+  const nr={
+    id:'rec'+Date.now()+Math.random(),
+    desc:t.desc,amount:t.amount,type:t.type,category:t.category,
+    respId:t.respId||null,
+    isInstallment:true,
+    totalInstallments:t.totalInstallments,
+    startYear:sDate.getFullYear(),
+    startMonth:sDate.getMonth(),
+    manualOnly:true
+  };
+  recurring.push(nr);
+  return nr;
+}
+
+function confirmBulkImport(){
+  const errors=[];
+  const toImport=[];
+  bulkRows.forEach((r,i)=>{
+    if(!r.desc&&!r.valor&&!r.date) return;
+    const normDate=normalizeDateInput(r.date);
+    if(!normDate){errors.push(`Linha ${i+1}: data inválida ou ausente`);return;}
+    r.date=normDate;
+    const amt=parseAmountInput(r.valor);
+    if(isNaN(amt)||amt===0){errors.push(`Linha ${i+1}: valor inválido`);return;}
+    let installmentNum=null,totalInstallments=null;
+    if(r.parcela){
+      const pm=r.parcela.match(/(\d+)\s*\/\s*(\d+)/);
+      if(pm){
+        installmentNum=parseInt(pm[1]);
+        totalInstallments=parseInt(pm[2]);
+        if(installmentNum<1||installmentNum>totalInstallments){
+          errors.push(`Linha ${i+1}: parcela "${r.parcela}" inválida (${installmentNum} de ${totalInstallments})`);
+          return;
+        }
+      } else {
+        errors.push(`Linha ${i+1}: parcela "${r.parcela}" fora do formato N/M`);
+        return;
+      }
+    }
+    const desc=r.desc||'Sem descrição';
+    toImport.push({
+      date:r.date,desc,amount:Math.abs(amt),type:r.type||'expense',
+      installmentNum,totalInstallments,
+      respId:r.respId||null,
+      category:detectCategory(desc,r.type==='income')
+    });
+  });
+  if(errors.length){alert(errors.join('\n'));return;}
+  if(!toImport.length){alert('Preencha pelo menos uma linha.');return;}
+  let imported=0;
+  let recursCreated=0;
+  toImport.forEach(t=>{
+    const tx={
+      id:'tx'+Date.now()+Math.random()+'-'+imported,
+      desc:t.desc,amount:t.amount,type:t.type,
+      category:t.category,date:t.date,
+      invoiceKey:resolveInvoiceForDate(t.date),
+      respId:t.respId,
+      note:'Lançamento em massa'
+    };
+    if(t.installmentNum&&t.totalInstallments){
+      const before=recurring.length;
+      const recur=findOrCreateInstallmentRecur(t);
+      if(recurring.length>before) recursCreated++;
+      // Backfill de parcelas anteriores (1..installmentNum-1)
+      for(let n=1;n<t.installmentNum;n++){
+        const existing=transactions.find(x=>x.recurId===recur.id&&x.installmentNum===n);
+        if(existing) continue;
+        let ty=recur.startYear, tm=recur.startMonth+(n-1);
+        while(tm>11){tm-=12;ty++;}
+        if(isMonthPaid(ty,tm)) continue; // não mexe em fatura paga
+        const mm=String(tm+1).padStart(2,'0');
+        const backDate=`${ty}-${mm}-01`;
+        transactions.push({
+          id:'tx'+Date.now()+Math.random()+'-bf'+n,
+          desc:t.desc,amount:t.amount,type:t.type,
+          category:t.category,date:backDate,
+          invoiceKey:resolveInvoiceForDate(backDate),
+          respId:t.respId,
+          recurId:recur.id,
+          installmentNum:n,
+          totalInstallments:t.totalInstallments,
+          note:'Parcela retroativa (massa)'
+        });
+        imported++;
+      }
+      // Evitar duplicação se já existe tx com mesmo recurId+installmentNum
+      const dup=transactions.find(x=>x.recurId===recur.id&&x.installmentNum===t.installmentNum);
+      if(dup) return;
+      tx.recurId=recur.id;
+      tx.installmentNum=t.installmentNum;
+      tx.totalInstallments=t.totalInstallments;
+    }
+    transactions.push(tx);
     imported++;
   });
   markUnsaved();
-  closeOfxImport();
+  closeBulkEntry();
   render();
   const toast=document.getElementById('toast');
-  toast.textContent=`✓ ${imported} transação${imported!==1?'ões':''} importada${imported!==1?'s':''}!`;
+  toast.textContent=`✓ ${imported} lançamento${imported!==1?'s':''} importado${imported!==1?'s':''}${recursCreated?` · ${recursCreated} parcelamento${recursCreated!==1?'s':''} criado${recursCreated!==1?'s':''}`:''}!`;
   toast.classList.add('show');
   setTimeout(()=>{toast.classList.remove('show');toast.textContent='✓ Arquivo salvo com sucesso!';},3000);
+}
+
+// ── EXPORT CSV ──
+function csvEscape(v){
+  v=v==null?'':String(v);
+  if(/[;"\n\r]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function exportCsv(){
+  const txs=getCurrentTxs().slice().sort((a,b)=>a.date.localeCompare(b.date));
+  if(!txs.length){alert('Sem transações no mês atual para exportar.');return;}
+  const header='data;descricao;parcela;valor;type;responsavel;categoria;nota';
+  const lines=txs.map(t=>{
+    const parcela=t.installmentNum&&t.totalInstallments?`${t.installmentNum}/${t.totalInstallments}`:'';
+    const valor=t.amount.toFixed(2).replace('.',',');
+    const tipo=t.type==='income'?'Receita':'Despesa';
+    const resp=t.respId?getRespName(t.respId):'';
+    return [t.date,t.desc,parcela,valor,tipo,resp,t.category||'',t.note||''].map(csvEscape).join(';');
+  });
+  const csv='\uFEFF'+header+'\n'+lines.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`montra_${monthKey(currentYear,currentMonth)}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  const toast=document.getElementById('toast');
+  toast.textContent=`✓ ${txs.length} transações exportadas!`;
+  toast.classList.add('show');
+  setTimeout(()=>{toast.classList.remove('show');toast.textContent='✓ Arquivo salvo com sucesso!';},2500);
 }
 
 // ── EXTRATO PDF ──
@@ -1525,8 +1999,11 @@ function printExtrato(){
     recurring=data.recurring||[];
     responsibles=data.responsibles||[];
     paidMonths=data.paidMonths||[];
+    closedMonths=data.closedMonths||[];
     budgets=data.budgets||{};
     investments=data.investments||[];
+    settings=Object.assign({closeDay:null,dueDay:null,autoClose:false},data.settings||{});
+    migrateInvoiceKeys();
     const btn=document.getElementById('btn-continue');
     const divider=document.getElementById('div-or-import');
     if(btn){btn.style.display='flex';}

@@ -68,36 +68,46 @@
     </div>
   </div>
 
+  <div id="backup-banner" class="backup-banner" style="display:none"></div>
+  <div id="due-banner" class="backup-banner" style="display:none;background:var(--redbg);border-color:var(--red)"></div>
+
   <!-- TRANSACTIONS -->
   <div class="page active" id="page-transactions">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 8px;flex-wrap:wrap;gap:8px">
       <div class="month-nav">
         <button class="month-btn" onclick="changeMonth(-1)">‹</button>
-        <span class="month-label" id="month-label"></span>
+        <span class="month-label" id="month-label" onclick="openMonthPicker()" title="Clique para escolher mês/ano"></span>
         <button class="month-btn" onclick="changeMonth(1)">›</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div id="paid-badge-area"></div>
         <button class="pay-btn" id="pay-month-btn" onclick="openPayModal()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Fechar mês
+          Fechar fatura
+        </button>
+        <button class="pay-btn" id="pay-invoice-btn" onclick="openPayInvoiceModal()" style="display:none;background:var(--green);color:#fff">
+          💰 Pagar fatura
         </button>
       </div>
     </div>
+    <div class="month-heatmap" id="month-heatmap"></div>
     <div id="lock-banner-area"></div>
     <div id="installment-alert-area"></div>
     <div class="summary">
       <div class="card"><div class="card-label">Receitas</div><div class="card-value" style="color:var(--green)" id="total-income">R$ 0</div><div class="card-sub" id="income-count"></div></div>
       <div class="card"><div class="card-label">Despesas</div><div class="card-value" style="color:var(--red)" id="total-expense">R$ 0</div><div class="card-sub" id="expense-count"></div></div>
       <div class="card"><div class="card-label">Saldo</div><div class="card-value" id="total-balance">R$ 0</div><div class="card-sub" id="balance-label"></div></div>
+      <div class="card" id="next-invoice-card"><div class="card-label">Próxima fatura</div><div class="card-value" id="next-invoice-value">R$ 0</div><div class="card-sub" id="next-invoice-sub"></div></div>
+      <div class="card" id="budget-summary-card" style="display:none"><div class="card-label">Orçamento</div><div class="card-value" id="budget-summary-value">0%</div><div class="card-sub" id="budget-summary-sub"></div></div>
     </div>
     <div class="main-grid">
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">Transações</div>
           <div style="display:flex;gap:8px">
-            <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="triggerOfxInput()">📥 Importar OFX</button>
+            <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="openBulkEntry()">📝 Lançar em massa</button>
             <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="printExtrato()">📄 Extrato PDF</button>
+            <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2)" onclick="exportCsv()">📊 CSV</button>
             <button class="add-btn" id="add-tx-btn" onclick="openForm()">+ Adicionar</button>
           </div>
         </div>
@@ -215,30 +225,120 @@
     <div style="font-family:var(--font-heading);font-weight:700;font-size:16px;margin-bottom:14px">Mais opções</div>
     <button class="more-menu-item" onclick="showPage('people',null);closeMoreMenu()"><span>👥</span> Responsáveis</button>
     <button class="more-menu-item" onclick="showPage('history',null);closeMoreMenu()"><span>📋</span> Histórico</button>
+    <button class="more-menu-item" onclick="openSettings();closeMoreMenu()"><span>⚙️</span> Configurações da fatura</button>
+    <button class="more-menu-item" onclick="toggleTheme();closeMoreMenu()"><span id="theme-icon">🌙</span> <span id="theme-label">Tema claro</span></button>
+    <button class="more-menu-item" onclick="openShortcutsHelp();closeMoreMenu()"><span>⌨️</span> Atalhos do teclado</button>
   </div>
 </div>
 </div>
 
-<!-- OFX FILE INPUT -->
-<input type="file" id="ofx-input" accept=".ofx,.OFX" style="display:none" onchange="handleOfxFile(event)"/>
-
-<!-- OFX IMPORT MODAL -->
-<div class="overlay hidden" id="ofx-overlay">
-  <div class="form-card" style="width:600px;max-height:90vh;display:flex;flex-direction:column">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div class="form-title" style="margin-bottom:0">📥 Importar extrato OFX</div>
-      <button class="btn-cancel" onclick="closeOfxImport()" style="padding:6px 12px;flex:none">✕</button>
+<!-- BULK ENTRY MODAL -->
+<div class="overlay hidden" id="bulk-overlay">
+  <div class="form-card" style="width:900px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="form-title" style="margin-bottom:0">📝 Lançar em massa</div>
+      <button class="btn-cancel" onclick="closeBulkEntry()" style="padding:6px 12px;flex:none">✕</button>
     </div>
-    <div id="ofx-summary" style="margin-bottom:12px"></div>
-    <div id="ofx-toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-      <label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ofx-select-all" checked onchange="toggleOfxSelectAll()" style="accent-color:var(--accent);width:15px;height:15px"/> Selecionar todas</label>
-      <div style="flex:1"></div>
-      <span id="ofx-selected-count" style="font-size:12px;color:var(--text3)"></span>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Preencha as linhas ou cole direto do Excel/Sheets (Ctrl+V). Colunas: <strong>Data, Descrição, Parcela (3/12), Valor, Tipo, Responsável</strong>.</div>
+    <div style="flex:1;overflow:auto;min-height:0;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;padding:10px">
+      <table class="bulk-table">
+        <thead>
+          <tr><th>#</th><th>Data</th><th>Descrição</th><th>Parcela</th><th>Valor</th><th>Tipo</th><th>Responsável</th><th></th></tr>
+        </thead>
+        <tbody id="bulk-tbody"></tbody>
+      </table>
+      <div class="bulk-mobile" id="bulk-mobile"></div>
     </div>
-    <div id="ofx-list" style="flex:1;overflow-y:auto;min-height:0;margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <button class="add-btn" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;font-size:12px" onclick="addBulkRow()">+ Adicionar linha</button>
+      <span id="bulk-count" style="font-size:12px;color:var(--text3)"></span>
+    </div>
     <div class="form-actions" style="margin-top:0">
-      <button class="btn-cancel" onclick="closeOfxImport()">Cancelar</button>
-      <button class="btn-save" id="ofx-import-btn" onclick="confirmOfxImport()">Importar selecionadas</button>
+      <button class="btn-cancel" onclick="closeBulkEntry()">Cancelar</button>
+      <button class="btn-save" id="bulk-import-btn" onclick="confirmBulkImport()">Importar lançamentos</button>
+    </div>
+  </div>
+</div>
+
+<!-- MONTH/YEAR PICKER MODAL -->
+<div class="modal-overlay hidden" id="month-picker" onclick="if(event.target===this)closeMonthPicker()">
+  <div class="mp-card">
+    <div class="mp-year-row">
+      <button class="month-btn" onclick="changeMpYear(-1)">‹</button>
+      <span class="mp-year-label" id="mp-year"></span>
+      <button class="month-btn" onclick="changeMpYear(1)">›</button>
+    </div>
+    <div class="mp-grid" id="mp-grid"></div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="add-btn" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:6px" onclick="pickerToToday()">Hoje</button>
+      <button class="btn-cancel" style="flex:1" onclick="closeMonthPicker()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="settings-modal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-card" style="text-align:left;width:380px;max-width:92vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:16px">⚙️ Configurações da fatura</div>
+      <button class="btn-cancel" onclick="closeSettings()" style="padding:4px 10px">✕</button>
+    </div>
+    <div class="cfg-list">
+      <div class="cfg-row">
+        <div class="cfg-icon">📋</div>
+        <div class="cfg-body">
+          <div class="cfg-title">Dia de fechamento</div>
+          <div class="cfg-help">Compras após esse dia vão para a fatura do próximo mês.</div>
+        </div>
+        <div class="cfg-control">
+          <button type="button" class="cfg-step" onclick="stepCfg('cfg-close-day',-1)">−</button>
+          <input type="number" min="1" max="31" id="cfg-close-day" class="cfg-input" placeholder="—"/>
+          <button type="button" class="cfg-step" onclick="stepCfg('cfg-close-day',1)">+</button>
+        </div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-icon">💸</div>
+        <div class="cfg-body">
+          <div class="cfg-title">Dia de vencimento</div>
+          <div class="cfg-help">Alerta aparece 3 dias antes do vencimento.</div>
+        </div>
+        <div class="cfg-control">
+          <button type="button" class="cfg-step" onclick="stepCfg('cfg-due-day',-1)">−</button>
+          <input type="number" min="1" max="31" id="cfg-due-day" class="cfg-input" placeholder="—"/>
+          <button type="button" class="cfg-step" onclick="stepCfg('cfg-due-day',1)">+</button>
+        </div>
+      </div>
+      <label class="cfg-toggle">
+        <div class="cfg-icon">🤖</div>
+        <div class="cfg-body">
+          <div class="cfg-title">Fechar faturas automaticamente</div>
+          <div class="cfg-help">Ao passar do dia de fechamento, a fatura é fechada sozinha.</div>
+        </div>
+        <div class="cfg-switch"><input type="checkbox" id="cfg-auto-close"/><span class="cfg-slider"></span></div>
+      </label>
+    </div>
+    <div class="form-actions" style="margin-top:18px">
+      <button class="btn-cancel" onclick="closeSettings()">Cancelar</button>
+      <button class="btn-save" onclick="saveSettings()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTCUTS HELP MODAL -->
+<div class="modal-overlay hidden" id="shortcuts-modal" onclick="if(event.target===this)closeShortcutsHelp()">
+  <div class="modal-card" style="text-align:left;width:340px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:16px">⌨️ Atalhos do teclado</div>
+      <button class="btn-cancel" onclick="closeShortcutsHelp()" style="padding:4px 10px">✕</button>
+    </div>
+    <div class="shortcuts-list">
+      <div class="shortcut-row"><kbd>N</kbd><span>Nova transação</span></div>
+      <div class="shortcut-row"><kbd>M</kbd><span>Lançar em massa</span></div>
+      <div class="shortcut-row"><kbd>/</kbd><span>Focar na busca</span></div>
+      <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>Mês anterior / próximo</span></div>
+      <div class="shortcut-row"><kbd>Esc</kbd><span>Fechar modal aberto</span></div>
+      <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>S</kbd><span>Exportar backup</span></div>
+      <div class="shortcut-row"><kbd>?</kbd><span>Esta ajuda</span></div>
     </div>
   </div>
 </div>
@@ -246,14 +346,25 @@
 <!-- TOAST -->
 <div class="toast" id="toast">✓ Arquivo salvo com sucesso!</div>
 
-<!-- PAY MODAL -->
+<!-- CLOSE INVOICE MODAL -->
 <div class="modal-overlay hidden" id="pay-modal">
   <div class="modal-card">
-    <div class="modal-icon">🔒</div>
-    <div class="modal-title" id="pay-modal-title">Fechar mês?</div>
+    <div class="modal-icon">📋</div>
+    <div class="modal-title" id="pay-modal-title">Fechar fatura?</div>
     <div class="modal-sub" id="pay-modal-sub"></div>
-    <div class="modal-warning">⚠️ Após fechar, o mês será bloqueado — nenhuma transação poderá ser adicionada, editada ou removida.</div>
+    <div class="modal-warning">⚠️ Após fechar, novos lançamentos com data neste mês irão automaticamente para a próxima fatura aberta. Transações já existentes continuam editáveis.</div>
     <div class="modal-actions"><button class="modal-cancel" onclick="closePayModal()">Cancelar</button><button class="modal-confirm-pay" onclick="confirmPayMonth()">Confirmar e fechar</button></div>
+  </div>
+</div>
+
+<!-- PAY INVOICE MODAL -->
+<div class="modal-overlay hidden" id="pay-invoice-modal">
+  <div class="modal-card">
+    <div class="modal-icon">💰</div>
+    <div class="modal-title">Marcar fatura como paga?</div>
+    <div class="modal-sub" id="pay-invoice-modal-sub"></div>
+    <div class="modal-warning">⚠️ A fatura será bloqueada completamente — somente leitura. Use "Reabrir" para desfazer.</div>
+    <div class="modal-actions"><button class="modal-cancel" onclick="closePayInvoiceModal()">Cancelar</button><button class="modal-confirm-pay" onclick="confirmPayInvoice()">Confirmar pagamento</button></div>
   </div>
 </div>
 
@@ -261,9 +372,8 @@
 <div class="modal-overlay hidden" id="unlock-modal">
   <div class="modal-card">
     <div class="modal-icon">🔓</div>
-    <div class="modal-title">Reabrir mês?</div>
+    <div class="modal-title">Reabrir fatura?</div>
     <div class="modal-sub" id="unlock-modal-sub"></div>
-    <div class="modal-warning">⚠️ Isso removerá o status "Pago" e permitirá edições novamente.</div>
     <div class="modal-actions"><button class="modal-cancel" onclick="closeUnlockModal()">Cancelar</button><button class="modal-confirm-unlock" onclick="confirmUnlock()">Reabrir</button></div>
   </div>
 </div>

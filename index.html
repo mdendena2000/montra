@@ -202,6 +202,28 @@
     <div class="annual-grid" id="annual-cat-grid"></div>
   </div>
 
+  <!-- CATEGORIES -->
+  <div class="page" id="page-categories">
+    <div style="padding:16px 0 14px"><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Categorias</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Crie categorias personalizadas ou use as padrões</div></div>
+    <div class="people-grid">
+      <div class="panel" style="align-self:start">
+        <div class="panel-header"><div class="panel-title">Nova categoria</div></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div><label class="form-label">Nome</label><input class="form-input" id="new-cat-name" maxlength="30" placeholder="Ex: Academia"/></div>
+          <div class="form-row">
+            <div><label class="form-label">Ícone (emoji)</label><input class="form-input" id="new-cat-icon" maxlength="4" placeholder="🏋️"/></div>
+            <div><label class="form-label">Cor</label><input class="form-input" id="new-cat-color" type="color" value="#7c6ff7" style="height:42px;padding:4px"/></div>
+          </div>
+          <button class="btn-save" onclick="addCategory()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Todas as categorias</div></div>
+        <div id="cat-manage-list" style="padding:14px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- HISTORY -->
   <div class="page" id="page-history">
     <div style="padding:16px 0 14px"><div style="font-family:var(--font-heading);font-size:18px;font-weight:800">Histórico de meses</div><div style="font-size:13px;color:var(--text3);margin-top:2px">Meses fechados ficam bloqueados para edição</div></div>
@@ -225,11 +247,24 @@
     <div style="font-family:var(--font-heading);font-weight:700;font-size:16px;margin-bottom:14px">Mais opções</div>
     <button class="more-menu-item" onclick="showPage('people',null);closeMoreMenu()"><span>👥</span> Responsáveis</button>
     <button class="more-menu-item" onclick="showPage('history',null);closeMoreMenu()"><span>📋</span> Histórico</button>
+    <button class="more-menu-item" onclick="showPage('categories',null);closeMoreMenu()"><span>🏷️</span> Categorias</button>
     <button class="more-menu-item" onclick="openSettings();closeMoreMenu()"><span>⚙️</span> Configurações da fatura</button>
     <button class="more-menu-item" onclick="toggleTheme();closeMoreMenu()"><span id="theme-icon">🌙</span> <span id="theme-label">Tema claro</span></button>
-    <button class="more-menu-item" onclick="openShortcutsHelp();closeMoreMenu()"><span>⌨️</span> Atalhos do teclado</button>
   </div>
 </div>
+</div>
+
+<!-- CATEGORY MIGRATE MODAL -->
+<div class="modal-overlay hidden" id="cat-migrate-modal" onclick="if(event.target===this)closeCatMigrateModal()">
+  <div class="modal-card" style="text-align:left;width:380px;max-width:92vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:16px">Migrar transações</div>
+      <button class="btn-cancel" onclick="closeCatMigrateModal()" style="padding:4px 10px;flex:none">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">A categoria <strong id="cat-migrate-source"></strong> possui transações vinculadas. Escolha para qual categoria migrá-las antes de excluir.</div>
+    <div class="form-group"><label class="form-label">Migrar para</label><select class="form-input" id="cat-migrate-target"></select></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeCatMigrateModal()">Cancelar</button><button class="btn-save" onclick="confirmCatMigrate()">Migrar e excluir</button></div>
+  </div>
 </div>
 
 <!-- BULK ENTRY MODAL -->
@@ -281,7 +316,7 @@
   <div class="modal-card" style="text-align:left;width:380px;max-width:92vw">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-family:var(--font-heading);font-weight:700;font-size:16px">⚙️ Configurações da fatura</div>
-      <button class="btn-cancel" onclick="closeSettings()" style="padding:4px 10px">✕</button>
+      <button class="btn-cancel" onclick="closeSettings()" style="padding:4px 10px;flex:none">✕</button>
     </div>
     <div class="cfg-list">
       <div class="cfg-row">
@@ -320,25 +355,6 @@
     <div class="form-actions" style="margin-top:18px">
       <button class="btn-cancel" onclick="closeSettings()">Cancelar</button>
       <button class="btn-save" onclick="saveSettings()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- SHORTCUTS HELP MODAL -->
-<div class="modal-overlay hidden" id="shortcuts-modal" onclick="if(event.target===this)closeShortcutsHelp()">
-  <div class="modal-card" style="text-align:left;width:340px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-family:var(--font-heading);font-weight:700;font-size:16px">⌨️ Atalhos do teclado</div>
-      <button class="btn-cancel" onclick="closeShortcutsHelp()" style="padding:4px 10px">✕</button>
-    </div>
-    <div class="shortcuts-list">
-      <div class="shortcut-row"><kbd>N</kbd><span>Nova transação</span></div>
-      <div class="shortcut-row"><kbd>M</kbd><span>Lançar em massa</span></div>
-      <div class="shortcut-row"><kbd>/</kbd><span>Focar na busca</span></div>
-      <div class="shortcut-row"><kbd>←</kbd> <kbd>→</kbd><span>Mês anterior / próximo</span></div>
-      <div class="shortcut-row"><kbd>Esc</kbd><span>Fechar modal aberto</span></div>
-      <div class="shortcut-row"><kbd>Ctrl</kbd>+<kbd>S</kbd><span>Exportar backup</span></div>
-      <div class="shortcut-row"><kbd>?</kbd><span>Esta ajuda</span></div>
     </div>
   </div>
 </div>

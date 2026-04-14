@@ -112,11 +112,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 .cfg-switch input:checked+.cfg-slider{background:var(--accent);border-color:var(--accent)}
 .cfg-switch input:checked+.cfg-slider::before{transform:translateX(18px);background:#fff}
 
-/* ── SHORTCUTS HELP ── */
-.shortcuts-list{display:flex;flex-direction:column;gap:10px}
-.shortcut-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)}
-.shortcut-row kbd{background:var(--surface2);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:2px 8px;font-family:var(--font-body);font-size:12px;color:var(--text);min-width:28px;text-align:center;font-weight:600}
-
 /* ── MONTH PICKER ── */
 .mp-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:16px;width:280px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .mp-year-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -432,4 +427,10 @@ canvas{display:block}
   .tx-search{min-width:100%}
   .annual-grid{grid-template-columns:1fr}
   .inv-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:480px){
+  .modal-card{padding:18px;width:auto}
+  .form-card{padding:18px}
+  .form-row{grid-template-columns:1fr}
 }
